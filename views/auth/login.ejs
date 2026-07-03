@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — POS System</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script>(function(){const t=localStorage.getItem('pos-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+  <style>
+    .login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); }
+    .login-card { width: 380px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px 32px; box-shadow: var(--shadow); }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo-icon { width: 52px; height: 52px; background: var(--accent); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; margin-bottom: 12px; }
+    .login-logo h1 { font-size: 1.3rem; font-weight: 700; }
+    .login-logo p { color: var(--text-muted); font-size: 0.82rem; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon"><i class="bi bi-bag-check-fill"></i></div>
+      <h1>POS System</h1>
+      <p>Mini Supermarket Billing</p>
+    </div>
+
+    <% if (loginError) { %>
+    <div class="alert alert-danger mb-16">
+      <i class="bi bi-exclamation-circle"></i>
+      <%= loginError %>
+    </div>
+    <% } %>
+
+    <% if (errors && errors.length > 0) { %>
+    <div class="alert alert-danger mb-16">
+      <div>
+        <% errors.forEach(function(e){ %><div><i class="bi bi-dot"></i> <%= e.message %></div><% }) %>
+      </div>
+    </div>
+    <% } %>
+
+    <form action="/auth/login" method="POST" data-once>
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input type="text" id="username" name="username"
+               class="form-control"
+               value="<%= oldInput.username || '' %>"
+               placeholder="Enter username"
+               autocomplete="username"
+               autofocus
+               required />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <div style="position:relative">
+          <input type="password" id="password" name="password"
+                 class="form-control"
+                 placeholder="Enter password"
+                 autocomplete="current-password"
+                 style="padding-right:40px"
+                 required />
+          <button type="button" id="togglePwd"
+                  style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0">
+            <i class="bi bi-eye" id="pwdIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full" style="margin-top:20px;justify-content:center;padding:11px">
+        <i class="bi bi-lightning-charge"></i> Sign In
+      </button>
+    </form>
+
+    <div style="margin-top:20px;text-align:center">
+      <button id="themeToggle" class="btn btn-ghost btn-sm">
+        <i class="bi bi-sun"></i> Toggle Theme
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/main.js"></script>
+<script>
+  document.getElementById('togglePwd').addEventListener('click', function () {
+    const inp = document.getElementById('password');
+    const icon = document.getElementById('pwdIcon');
+    if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+    else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
+  });
+</script>
+</body>
+</html>

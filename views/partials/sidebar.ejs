@@ -1,0 +1,125 @@
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon"><i class="bi bi-bag-check"></i></div>
+    <div class="sidebar-brand-text">
+      POS System<br/>
+      <small>Mini Supermarket</small>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <% if (currentUser && currentUser.role === 'admin') { %>
+
+    <div class="nav-section-label">Overview</div>
+
+    <div class="nav-item">
+      <a href="/admin/dashboard" class="nav-link">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </a>
+    </div>
+
+    <div class="nav-section-label">Sales</div>
+
+    <div class="nav-item">
+      <a href="/pos" class="nav-link">
+        <i class="bi bi-lightning-charge"></i> POS Terminal
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/billing" class="nav-link">
+        <i class="bi bi-receipt"></i> Transactions
+      </a>
+    </div>
+
+    <div class="nav-section-label">Catalogue</div>
+
+    <div class="nav-item">
+      <a href="/admin/products" class="nav-link">
+        <i class="bi bi-box-seam"></i> Products
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/categories" class="nav-link">
+        <i class="bi bi-tags"></i> Categories
+      </a>
+    </div>
+
+    <div class="nav-section-label">Inventory</div>
+
+    <div class="nav-item">
+      <a href="/admin/inventory" class="nav-link">
+        <i class="bi bi-archive"></i> Stock Overview
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/inventory/logs" class="nav-link">
+        <i class="bi bi-clock-history"></i> Stock Logs
+      </a>
+    </div>
+
+    <div class="nav-section-label">Reports</div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/daily" class="nav-link">
+        <i class="bi bi-calendar-day"></i> Daily Report
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/monthly" class="nav-link">
+        <i class="bi bi-calendar-month"></i> Monthly Report
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/yearly" class="nav-link">
+        <i class="bi bi-calendar3"></i> Yearly Report
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/cashier" class="nav-link">
+        <i class="bi bi-person-badge"></i> Cashier Report
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/products" class="nav-link">
+        <i class="bi bi-bar-chart"></i> Product Report
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/reports/inventory" class="nav-link">
+        <i class="bi bi-clipboard-data"></i> Inventory Report
+      </a>
+    </div>
+
+    <div class="nav-section-label">Admin</div>
+
+    <div class="nav-item">
+      <a href="/admin/staff" class="nav-link">
+        <i class="bi bi-people"></i> Staff
+      </a>
+    </div>
+
+    <div class="nav-item">
+      <a href="/admin/settings" class="nav-link">
+        <i class="bi bi-gear"></i> Settings
+      </a>
+    </div>
+
+    <% } %>
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div style="font-size:0.78rem;color:var(--text-muted)">Logged in as</div>
+    <div style="font-weight:600;margin-top:2px;font-size:0.85rem"><%= currentUser ? currentUser.name : '' %></div>
+    <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;margin-top:1px"><%= currentUser ? currentUser.role : '' %></div>
+  </div>
+</aside>

@@ -1,0 +1,699 @@
+'use strict';
+
+// Apply saved theme
+(function () {
+  const saved = localStorage.getItem('pos-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+/* =============================================
+   STATE
+   ============================================= */
+let cart = [];
+let selectedCartIndex = -1;
+let searchResults = [];
+let searchSelectedIndex = -1;
+let searchDebounceTimer = null;
+let isProcessing = false;
+
+const CURRENCY = window.POS_CONFIG.currencySymbol || '₹';
+const AUTO_PRINT = window.POS_CONFIG.autoPrint || false;
+const PRINTER_SIZE = window.POS_CONFIG.printerSize || '80mm';
+
+/* =============================================
+   DOM REFS
+   ============================================= */
+const searchInput    = document.getElementById('posSearchInput');
+const searchResults$ = document.getElementById('searchResults');
+const cartBody       = document.getElementById('cartBody');
+const cartEmpty      = document.getElementById('cartEmpty');
+const cartTableWrap  = document.getElementById('cartTableWrap');
+
+const subtotalEl     = document.getElementById('summarySubtotal');
+const discountEl     = document.getElementById('summaryDiscount');
+const taxEl          = document.getElementById('summaryTax');
+const grandTotalEl   = document.getElementById('summaryGrandTotal');
+
+const cashInput      = document.getElementById('cashReceived');
+const upiInput       = document.getElementById('upiAmount');
+const cardInput      = document.getElementById('cardAmount');
+const balanceEl      = document.getElementById('balanceDisplay');
+
+const chargeBtn      = document.getElementById('chargeBtn');
+const holdBtn        = document.getElementById('holdBtn');
+const clearBtn       = document.getElementById('clearBtn');
+
+const custName       = document.getElementById('customerName');
+const custPhone      = document.getElementById('customerPhone');
+
+const heldDrawer     = document.getElementById('heldDrawer');
+const heldList       = document.getElementById('heldOrderList');
+const drawerOverlay  = document.getElementById('drawerOverlay');
+
+/* =============================================
+   SEARCH
+   ============================================= */
+searchInput.addEventListener('input', function () {
+  clearTimeout(searchDebounceTimer);
+  const val = this.value.trim();
+  if (!val) { hideResults(); return; }
+  searchDebounceTimer = setTimeout(() => fetchSearch(val), 180);
+});
+
+searchInput.addEventListener('keydown', function (e) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (searchResults.length > 0) {
+      searchSelectedIndex = Math.min(searchSelectedIndex + 1, searchResults.length - 1);
+      renderResultsSelection();
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    searchSelectedIndex = Math.max(searchSelectedIndex - 1, 0);
+    renderResultsSelection();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (searchResults$.classList.contains('visible') && searchSelectedIndex >= 0) {
+      addToCart(searchResults[searchSelectedIndex]);
+    } else if (searchResults.length === 1) {
+      addToCart(searchResults[0]);
+    } else if (searchResults$.classList.contains('visible') && searchResults.length > 0) {
+      addToCart(searchResults[0]);
+    }
+  } else if (e.key === 'Escape') {
+    hideResults();
+  }
+});
+
+async function fetchSearch(query) {
+  try {
+    const isBarcode = /^\d{4,}$/.test(query);
+    const url = isBarcode
+      ? `/api/products/search?barcode=${encodeURIComponent(query)}`
+      : `/api/products/search?q=${encodeURIComponent(query)}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (isBarcode && data.success && data.products.length === 1) {
+      addToCart(data.products[0]);
+      searchInput.value = '';
+      hideResults();
+      return;
+    }
+
+    searchResults = data.products || [];
+    searchSelectedIndex = searchResults.length > 0 ? 0 : -1;
+    renderResults();
+  } catch (err) {
+    console.error('Search error:', err);
+  }
+}
+
+function renderResults() {
+  if (searchResults.length === 0) {
+    searchResults$.innerHTML = '<div class="pos-result-item"><div class="pos-result-info"><div class="pos-result-name">No products found</div></div></div>';
+    searchResults$.classList.add('visible');
+    return;
+  }
+  searchResults$.innerHTML = searchResults.map((p, i) => {
+    const isOut = !p.unlimitedStock && p.stock <= 0;
+    const isLow = !p.unlimitedStock && p.stock > 0 && p.stock <= 5;
+    const stockLabel = p.unlimitedStock ? '∞ In Stock' : isOut ? 'Out of Stock' : isLow ? `Low: ${p.stock}` : `Stock: ${p.stock}`;
+    const stockClass = isOut ? 'out-of-stock' : isLow ? 'low-stock' : '';
+    return `<div class="pos-result-item${i === searchSelectedIndex ? ' selected' : ''}" data-idx="${i}">
+      <div class="pos-result-info">
+        <div class="pos-result-name">${escHtml(p.name)}</div>
+        <div class="pos-result-meta">${escHtml(p.barcode)} · ${escHtml(p.sku)}</div>
+      </div>
+      <div class="pos-result-right">
+        <div class="pos-result-price">${CURRENCY}${p.sellingPrice.toFixed(2)}</div>
+        <div class="pos-result-stock ${stockClass}">${stockLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
+  searchResults$.classList.add('visible');
+
+  searchResults$.querySelectorAll('.pos-result-item').forEach((el, i) => {
+    el.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      addToCart(searchResults[i]);
+    });
+    el.addEventListener('mouseover', function () {
+      searchSelectedIndex = i;
+      renderResultsSelection();
+    });
+  });
+}
+
+function renderResultsSelection() {
+  searchResults$.querySelectorAll('.pos-result-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === searchSelectedIndex);
+  });
+}
+
+function hideResults() {
+  searchResults$.classList.remove('visible');
+  searchResults = [];
+  searchSelectedIndex = -1;
+}
+
+/* =============================================
+   CART
+   ============================================= */
+function addToCart(product) {
+  if (!product.unlimitedStock && product.stock <= 0) {
+    showToast('Out of stock: ' + product.name, 'danger');
+    return;
+  }
+
+  const existing = cart.findIndex((i) => i.productId === product._id);
+  if (existing >= 0) {
+    const item = cart[existing];
+    const newQty = item.qty + 1;
+    if (!product.unlimitedStock && newQty > product.stock) {
+      showToast(`Max stock reached for ${product.name}`, 'warning');
+      return;
+    }
+    item.qty = newQty;
+    selectedCartIndex = existing;
+  } else {
+    cart.push({
+      productId: product._id,
+      name: product.name,
+      barcode: product.barcode,
+      sku: product.sku,
+      unitPrice: product.sellingPrice,
+      qty: 1,
+      discount: 0,
+      taxPercent: product.taxPercent || 0,
+      stock: product.stock,
+      unlimitedStock: product.unlimitedStock
+    });
+    selectedCartIndex = cart.length - 1;
+  }
+
+  searchInput.value = '';
+  hideResults();
+  renderCart();
+  updateTotals();
+  searchInput.focus();
+}
+
+function renderCart() {
+  if (cart.length === 0) {
+    cartEmpty.style.display = 'flex';
+    cartTableWrap.style.display = 'none';
+    return;
+  }
+  cartEmpty.style.display = 'none';
+  cartTableWrap.style.display = 'block';
+
+  cartBody.innerHTML = cart.map((item, i) => {
+    const lineTotal = calcLineTotal(item);
+    return `<tr class="cart-row${i === selectedCartIndex ? ' cart-row-selected' : ''}" data-idx="${i}">
+      <td>
+        <div class="cart-product-name">${escHtml(item.name)}</div>
+        <div class="cart-product-meta">${escHtml(item.barcode)}</div>
+      </td>
+      <td>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
+          <input class="qty-input" type="number" min="1" value="${item.qty}"
+            onchange="setQty(${i}, this.value)"
+            onfocus="selectedCartIndex=${i};renderCart()"
+            tabindex="-1" />
+          <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
+        </div>
+      </td>
+      <td style="font-family:var(--font-mono)">${CURRENCY}${item.unitPrice.toFixed(2)}</td>
+      <td>
+        <input class="cart-discount-input" type="number" min="0" value="${item.discount}"
+          placeholder="0"
+          onchange="setDiscount(${i}, this.value)"
+          tabindex="-1" />
+      </td>
+      <td class="cart-line-total">${CURRENCY}${lineTotal.toFixed(2)}</td>
+      <td>
+        <button class="btn-delete-row" onclick="removeFromCart(${i})" tabindex="-1">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function calcLineTotal(item) {
+  const base = item.unitPrice * item.qty - (item.discount || 0);
+  const tax = base * (item.taxPercent || 0) / 100;
+  return Math.max(0, base + tax);
+}
+
+function changeQty(idx, delta) {
+  const item = cart[idx];
+  if (!item) return;
+  const newQty = item.qty + delta;
+  if (newQty < 1) { removeFromCart(idx); return; }
+  if (!item.unlimitedStock && newQty > item.stock) {
+    showToast('Insufficient stock', 'warning'); return;
+  }
+  item.qty = newQty;
+  selectedCartIndex = idx;
+  renderCart();
+  updateTotals();
+}
+
+function setQty(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  const qty = Math.max(1, parseInt(val, 10) || 1);
+  if (!item.unlimitedStock && qty > item.stock) {
+    showToast('Insufficient stock', 'warning');
+    item.qty = item.stock;
+  } else {
+    item.qty = qty;
+  }
+  selectedCartIndex = idx;
+  renderCart();
+  updateTotals();
+}
+
+function setDiscount(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  item.discount = Math.max(0, parseFloat(val) || 0);
+  renderCart();
+  updateTotals();
+}
+
+function removeFromCart(idx) {
+  cart.splice(idx, 1);
+  if (selectedCartIndex >= cart.length) selectedCartIndex = cart.length - 1;
+  renderCart();
+  updateTotals();
+}
+
+window.changeQty = changeQty;
+window.setQty = setQty;
+window.setDiscount = setDiscount;
+window.removeFromCart = removeFromCart;
+
+/* =============================================
+   TOTALS
+   ============================================= */
+function updateTotals() {
+  let subtotal = 0, discountTotal = 0, taxTotal = 0;
+  cart.forEach((item) => {
+    const base = item.unitPrice * item.qty;
+    const disc = item.discount || 0;
+    const tax = (base - disc) * (item.taxPercent || 0) / 100;
+    subtotal += base;
+    discountTotal += disc;
+    taxTotal += tax;
+  });
+  const grandTotal = Math.max(0, subtotal - discountTotal + taxTotal);
+
+  subtotalEl.textContent = CURRENCY + subtotal.toFixed(2);
+  discountEl.textContent = '- ' + CURRENCY + discountTotal.toFixed(2);
+  taxEl.textContent = CURRENCY + taxTotal.toFixed(2);
+  grandTotalEl.textContent = CURRENCY + grandTotal.toFixed(2);
+
+  updateBalance(grandTotal);
+  chargeBtn.disabled = cart.length === 0;
+}
+
+function getGrandTotal() {
+  let subtotal = 0, discountTotal = 0, taxTotal = 0;
+  cart.forEach((item) => {
+    const base = item.unitPrice * item.qty;
+    const disc = item.discount || 0;
+    subtotal += base;
+    discountTotal += disc;
+    taxTotal += (base - disc) * (item.taxPercent || 0) / 100;
+  });
+  return Math.max(0, subtotal - discountTotal + taxTotal);
+}
+
+/* =============================================
+   PAYMENT
+   ============================================= */
+const payTabs = document.querySelectorAll('.pay-tab');
+let activePayMethod = 'cash';
+
+payTabs.forEach((tab) => {
+  tab.addEventListener('click', function () {
+    activePayMethod = this.dataset.method;
+    payTabs.forEach((t) => t.classList.remove('active'));
+    this.classList.add('active');
+    updatePaymentFields();
+    updateBalance(getGrandTotal());
+  });
+});
+
+function updatePaymentFields() {
+  const show = (el, visible) => { if (el) el.closest('.payment-input-group').style.display = visible ? '' : 'none'; };
+  const cashGrp  = cashInput  ? cashInput.closest('.payment-input-group')  : null;
+  const upiGrp   = upiInput   ? upiInput.closest('.payment-input-group')   : null;
+  const cardGrp  = cardInput  ? cardInput.closest('.payment-input-group')  : null;
+
+  if (cashGrp)  cashGrp.style.display  = (activePayMethod === 'cash' || activePayMethod === 'mixed') ? '' : 'none';
+  if (upiGrp)   upiGrp.style.display   = (activePayMethod === 'upi'  || activePayMethod === 'mixed') ? '' : 'none';
+  if (cardGrp)  cardGrp.style.display  = (activePayMethod === 'card' || activePayMethod === 'mixed') ? '' : 'none';
+}
+
+[cashInput, upiInput, cardInput].forEach((inp) => {
+  if (inp) inp.addEventListener('input', () => updateBalance(getGrandTotal()));
+});
+
+function updateBalance(grandTotal) {
+  const cash = parseFloat(cashInput?.value) || 0;
+  const upi  = parseFloat(upiInput?.value)  || 0;
+  const card = parseFloat(cardInput?.value) || 0;
+  let received = 0;
+  if (activePayMethod === 'cash')  received = cash;
+  if (activePayMethod === 'upi')   received = upi;
+  if (activePayMethod === 'card')  received = card;
+  if (activePayMethod === 'mixed') received = cash + upi + card;
+
+  const balance = received - grandTotal;
+  balanceEl.textContent = CURRENCY + Math.abs(balance).toFixed(2);
+  balanceEl.className = 'balance-value ' + (balance >= 0 ? 'positive' : 'negative');
+  if (balance < 0) {
+    balanceEl.textContent = '- ' + CURRENCY + Math.abs(balance).toFixed(2);
+  }
+}
+
+/* =============================================
+   CHARGE / BILLING
+   ============================================= */
+chargeBtn.addEventListener('click', processBill);
+
+async function processBill() {
+  if (isProcessing || cart.length === 0) return;
+
+  const grandTotal = getGrandTotal();
+  const cash  = parseFloat(cashInput?.value)  || 0;
+  const upi   = parseFloat(upiInput?.value)   || 0;
+  const card  = parseFloat(cardInput?.value)  || 0;
+
+  // Validate payment amount
+  let totalPaid = 0;
+  if (activePayMethod === 'cash')  totalPaid = cash;
+  if (activePayMethod === 'upi')   totalPaid = upi;
+  if (activePayMethod === 'card')  totalPaid = card;
+  if (activePayMethod === 'mixed') totalPaid = cash + upi + card;
+
+  if (totalPaid < grandTotal - 0.01) {
+    showToast('Payment amount is less than the total', 'danger');
+    return;
+  }
+
+  isProcessing = true;
+  chargeBtn.disabled = true;
+  chargeBtn.innerHTML = '<span class="spinner"></span> Processing...';
+
+  try {
+    const payload = {
+      items: cart.map((i) => ({
+        productId: i.productId,
+        qty: i.qty,
+        discount: i.discount || 0
+      })),
+      customerName: custName?.value?.trim() || '',
+      customerPhone: custPhone?.value?.trim() || '',
+      paymentMethod: activePayMethod,
+      paymentDetails: {
+        cashReceived: cash,
+        upiAmount: upi,
+        cardAmount: card,
+        balance: totalPaid - grandTotal
+      }
+    };
+
+    const res = await fetch('/billing/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(`Bill ${data.invoiceNo} created!`, 'success');
+      clearCartState();
+      openReceipt(data.billId);
+    } else {
+      showToast(data.message || 'Billing failed', 'danger');
+    }
+  } catch (err) {
+    showToast('Network error. Please retry.', 'danger');
+  } finally {
+    isProcessing = false;
+    chargeBtn.disabled = false;
+    chargeBtn.innerHTML = '<i class="bi bi-check-circle"></i> Charge';
+  }
+}
+
+function openReceipt(billId) {
+  const size = PRINTER_SIZE === '58mm' ? '58mm' : '80mm';
+  const url = `/billing/${billId}/print/${size}`;
+  if (AUTO_PRINT) {
+    const win = window.open(url, '_blank', 'width=400,height=700');
+    if (win) {
+      win.onload = function () { win.focus(); win.print(); };
+    }
+  } else {
+    window.open(url, '_blank', 'width=400,height=700');
+  }
+}
+
+/* =============================================
+   HOLD / CLEAR / RESUME
+   ============================================= */
+holdBtn.addEventListener('click', holdOrder);
+clearBtn.addEventListener('click', clearCartConfirm);
+
+async function holdOrder() {
+  if (cart.length === 0) { showToast('Cart is empty', 'warning'); return; }
+
+  const label = prompt('Hold label (optional):', `Hold ${new Date().toLocaleTimeString()}`) || '';
+
+  const payload = {
+    items: cart,
+    customerName: custName?.value?.trim() || '',
+    customerPhone: custPhone?.value?.trim() || '',
+    holdLabel: label
+  };
+
+  try {
+    const res = await fetch('/pos/hold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Order held', 'success');
+      clearCartState();
+    } else {
+      showToast(data.message, 'danger');
+    }
+  } catch (err) {
+    showToast('Failed to hold order', 'danger');
+  }
+}
+
+function clearCartConfirm() {
+  if (cart.length === 0) return;
+  if (confirm('Clear entire cart?')) clearCartState();
+}
+
+function clearCartState() {
+  cart = [];
+  selectedCartIndex = -1;
+  if (custName)  custName.value  = '';
+  if (custPhone) custPhone.value = '';
+  if (cashInput) cashInput.value = '';
+  if (upiInput)  upiInput.value  = '';
+  if (cardInput) cardInput.value = '';
+  renderCart();
+  updateTotals();
+  searchInput.focus();
+}
+
+/* =============================================
+   HELD ORDERS DRAWER
+   ============================================= */
+document.getElementById('heldOrdersBtn')?.addEventListener('click', openHeldDrawer);
+
+async function openHeldDrawer() {
+  try {
+    const res = await fetch('/pos/held');
+    const data = await res.json();
+    renderHeldList(data.heldOrders || []);
+  } catch (e) {}
+  heldDrawer.classList.add('open');
+  drawerOverlay.classList.add('visible');
+}
+
+function closeHeldDrawer() {
+  heldDrawer.classList.remove('open');
+  drawerOverlay.classList.remove('visible');
+}
+
+drawerOverlay.addEventListener('click', closeHeldDrawer);
+document.getElementById('closeHeldDrawer')?.addEventListener('click', closeHeldDrawer);
+
+function renderHeldList(orders) {
+  if (orders.length === 0) {
+    heldList.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;font-size:0.875rem">No held orders</p>';
+    return;
+  }
+  heldList.innerHTML = orders.map((o) => `
+    <div class="held-order-card" data-id="${o._id}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="held-order-label">${escHtml(o.holdLabel || 'Held Order')}</div>
+          <div class="held-order-meta">${o.items.length} item${o.items.length !== 1 ? 's' : ''} · ${o.customerName || 'No customer'}</div>
+          <div class="held-order-meta" style="margin-top:2px">${new Date(o.createdAt).toLocaleTimeString()}</div>
+        </div>
+        <button onclick="deleteHeld('${o._id}', event)" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;font-size:1rem">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  heldList.querySelectorAll('.held-order-card').forEach((card) => {
+    card.addEventListener('click', async function () {
+      const id = this.dataset.id;
+      await resumeHeldOrder(id);
+      closeHeldDrawer();
+    });
+  });
+}
+
+async function resumeHeldOrder(id) {
+  try {
+    const res = await fetch(`/pos/held/${id}`);
+    const data = await res.json();
+    if (!data.success) { showToast('Could not load held order', 'danger'); return; }
+
+    const held = data.heldOrder;
+
+    if (cart.length > 0) {
+      if (!confirm('This will replace the current cart. Continue?')) return;
+    }
+
+    cart = held.items.map((item) => ({
+      productId: item.product._id || item.product,
+      name: item.name,
+      barcode: item.barcode || '',
+      sku: item.sku || '',
+      unitPrice: item.unitPrice,
+      qty: item.qty,
+      discount: item.discount || 0,
+      taxPercent: item.taxPercent || 0,
+      stock: item.product.stock || 0,
+      unlimitedStock: item.product.unlimitedStock || false
+    }));
+
+    if (custName && held.customerName)  custName.value  = held.customerName;
+    if (custPhone && held.customerPhone) custPhone.value = held.customerPhone;
+
+    renderCart();
+    updateTotals();
+    showToast('Order resumed', 'success');
+
+    // Delete the held order since it's back in cart
+    await fetch(`/pos/held/${id}`, { method: 'DELETE' });
+  } catch (err) {
+    showToast('Failed to resume order', 'danger');
+  }
+}
+
+window.deleteHeld = async function (id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this held order?')) return;
+  await fetch(`/pos/held/${id}`, { method: 'DELETE' });
+  openHeldDrawer();
+};
+
+/* =============================================
+   KEYBOARD SHORTCUTS
+   ============================================= */
+document.addEventListener('keydown', function (e) {
+  // F2 — focus search
+  if (e.key === 'F2') { e.preventDefault(); searchInput.focus(); searchInput.select(); }
+  // F3 — held orders
+  if (e.key === 'F3') { e.preventDefault(); openHeldDrawer(); }
+  // F4 — hold current order
+  if (e.key === 'F4') { e.preventDefault(); holdOrder(); }
+  // F8 — clear cart
+  if (e.key === 'F8') { e.preventDefault(); clearCartConfirm(); }
+  // F10 — charge (process bill)
+  if (e.key === 'F10') { e.preventDefault(); processBill(); }
+  // Delete key when cart row is selected
+  if (e.key === 'Delete' && document.activeElement === searchInput && selectedCartIndex >= 0 && searchInput.value === '') {
+    removeFromCart(selectedCartIndex);
+  }
+  // +/- when search is focused for selected row qty
+  if (e.key === '+' && document.activeElement === searchInput && selectedCartIndex >= 0) {
+    e.preventDefault(); changeQty(selectedCartIndex, 1);
+  }
+  if (e.key === '-' && document.activeElement === searchInput && selectedCartIndex >= 0) {
+    e.preventDefault(); changeQty(selectedCartIndex, -1);
+  }
+  // Arrow keys to move through cart
+  if (e.key === 'ArrowDown' && document.activeElement === searchInput && !searchResults$.classList.contains('visible')) {
+    e.preventDefault();
+    if (selectedCartIndex < cart.length - 1) { selectedCartIndex++; renderCart(); }
+  }
+  if (e.key === 'ArrowUp' && document.activeElement === searchInput && !searchResults$.classList.contains('visible')) {
+    e.preventDefault();
+    if (selectedCartIndex > 0) { selectedCartIndex--; renderCart(); }
+  }
+});
+
+/* =============================================
+   THEME
+   ============================================= */
+document.getElementById('posThemeToggle')?.addEventListener('click', function () {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('pos-theme', next);
+});
+
+/* =============================================
+   UTILITIES
+   ============================================= */
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer') || createToastContainer();
+  const el = document.createElement('div');
+  el.className = `pos-toast pos-toast-${type}`;
+  el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : type === 'danger' ? 'x-circle' : 'info-circle'}"></i> ${msg}`;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+function createToastContainer() {
+  const el = document.createElement('div');
+  el.id = 'toastContainer';
+  el.className = 'pos-toast-container';
+  document.body.appendChild(el);
+  return el;
+}
+
+/* Init */
+document.addEventListener('DOMContentLoaded', function () {
+  updatePaymentFields();
+  updateTotals();
+  searchInput.focus();
+});

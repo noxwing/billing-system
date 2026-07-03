@@ -1,0 +1,138 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><%= product.name %></h1>
+    <p>SKU: <span class="font-mono"><%= product.sku %></span> · Barcode: <span class="font-mono"><%= product.barcode %></span></p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/admin/products/<%= product._id %>/edit" class="btn btn-primary"><i class="bi bi-pencil"></i> Edit</a>
+    <a href="/admin/products" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- Product Info -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Product Details</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="text-xs text-muted">Category</div>
+          <div class="font-semibold"><%= product.category ? product.category.name : '—' %></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Status</div>
+          <span class="badge <%= product.status === 'active' ? 'badge-success' : 'badge-muted' %>"><%= product.status %></span>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Purchase Price</div>
+          <div class="font-mono font-semibold">₹<%= product.purchasePrice.toFixed(2) %></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Selling Price</div>
+          <div class="font-mono font-semibold text-success">₹<%= product.sellingPrice.toFixed(2) %></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Tax</div>
+          <div><%= product.taxPercent > 0 ? product.taxPercent + '%' : '—' %></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Margin</div>
+          <div class="font-semibold text-success">
+            ₹<%= (product.sellingPrice - product.purchasePrice).toFixed(2) %>
+            (<%= product.purchasePrice > 0 ? (((product.sellingPrice - product.purchasePrice) / product.purchasePrice) * 100).toFixed(1) : 0 %>%)
+          </div>
+        </div>
+      </div>
+      <% if (product.description) { %>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="text-xs text-muted mb-4">Description</div>
+        <div class="text-sm"><%= product.description %></div>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Stock Logs -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Stock History</span></div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Change</th>
+              <th>Stock After</th>
+              <th>By</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (stockLogs.length === 0) { %>
+            <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No stock logs yet</td></tr>
+            <% } else { %>
+            <% stockLogs.forEach(function(log){ %>
+            <tr>
+              <td class="text-xs text-muted"><%= moment(log.createdAt).format('DD MMM, HH:mm') %></td>
+              <td>
+                <span class="badge <%= log.type === 'sale' ? 'badge-danger' : log.type === 'restock' ? 'badge-success' : 'badge-info' %>">
+                  <%= log.type %>
+                </span>
+              </td>
+              <td class="font-mono font-semibold <%= log.qtyChange > 0 ? 'text-success' : 'text-danger' %>">
+                <%= log.qtyChange > 0 ? '+' : '' %><%= log.qtyChange %>
+              </td>
+              <td class="font-mono"><%= log.stockAfter %></td>
+              <td class="text-sm"><%= log.performedBy ? log.performedBy.name : '—' %></td>
+              <td class="text-sm text-muted"><%= log.reason || '—' %></td>
+            </tr>
+            <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Stock panel + Restock -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Stock Status</span></div>
+      <div style="text-align:center;padding:16px 0">
+        <% if (product.unlimitedStock) { %>
+          <div style="font-size:2.5rem;font-weight:700;color:var(--info)">∞</div>
+          <div class="text-sm text-muted mt-8">Unlimited Stock</div>
+        <% } else if (product.stock <= 0) { %>
+          <div style="font-size:2.5rem;font-weight:700;color:var(--danger)">0</div>
+          <div class="text-sm text-muted mt-8">Out of Stock</div>
+        <% } else { %>
+          <div style="font-size:2.5rem;font-weight:700;color:<%= product.stock <= product.lowStockThreshold ? 'var(--warning)' : 'var(--success)' %>">
+            <%= product.stock %>
+          </div>
+          <div class="text-sm text-muted mt-8">Units available</div>
+          <% if (product.stock <= product.lowStockThreshold) { %>
+          <div class="badge badge-warning mt-8">Low Stock Alert</div>
+          <% } %>
+        <% } %>
+        <div class="text-xs text-muted mt-8">Alert below: <%= product.lowStockThreshold %></div>
+      </div>
+    </div>
+
+    <% if (!product.unlimitedStock) { %>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Add Stock</span></div>
+      <form action="/admin/products/<%= product._id %>/restock" method="POST" data-once>
+        <div class="form-group">
+          <label class="form-label">Quantity to Add</label>
+          <input type="number" name="quantity" class="form-control" min="1" placeholder="e.g. 50" required autofocus />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <input type="text" name="reason" class="form-control" placeholder="e.g. New delivery" />
+        </div>
+        <button type="submit" class="btn btn-success w-full"><i class="bi bi-plus-circle"></i> Add Stock</button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+</div>

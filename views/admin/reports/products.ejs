@@ -1,0 +1,46 @@
+<div class="page-header">
+  <div class="page-header-left"><h1>Product Report</h1><p><%= reportMonthDisplay %></p></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="GET" action="/admin/reports/products">
+      <input type="month" name="month" value="<%= reportMonth %>" class="form-control" style="width:auto" onchange="this.form.submit()" />
+    </form>
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Top Products — <%= reportMonthDisplay %></span></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th style="text-align:center">Units Sold</th>
+          <th style="text-align:right">Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (productStats.length === 0) { %>
+        <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">No sales data for this period</td></tr>
+        <% } else { %>
+        <% const maxRevenue = productStats[0] ? productStats[0].totalRevenue : 1; %>
+        <% productStats.forEach(function(p, i){ %>
+        <tr>
+          <td class="text-sm text-muted font-bold"><%= i+1 %></td>
+          <td>
+            <div class="font-semibold text-sm"><%= p.name %></div>
+            <div style="margin-top:4px;height:4px;border-radius:2px;background:var(--bg-tertiary);overflow:hidden">
+              <div style="height:100%;background:var(--accent);width:<%= ((p.totalRevenue/maxRevenue)*100).toFixed(1) %>%;border-radius:2px"></div>
+            </div>
+          </td>
+          <td style="text-align:center"><span class="badge badge-muted"><%= p.totalQty %> units</span></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--success)">₹<%= p.totalRevenue.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

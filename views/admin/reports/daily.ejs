@@ -1,0 +1,50 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Daily Report</h1>
+    <p><%= reportDateDisplay %></p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="GET" action="/admin/reports/daily">
+      <input type="date" name="date" value="<%= reportDate %>" class="form-control" style="width:auto" onchange="this.form.submit()" />
+    </form>
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="stat-grid mb-20">
+  <div class="stat-card"><div class="stat-icon green"><i class="bi bi-cash-stack"></i></div><div><div class="stat-label">Total Revenue</div><div class="stat-value">₹<%= summary.total.toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon purple"><i class="bi bi-receipt"></i></div><div><div class="stat-label">Transactions</div><div class="stat-value"><%= summary.count %></div></div></div>
+  <div class="stat-card"><div class="stat-icon amber"><i class="bi bi-tag"></i></div><div><div class="stat-label">Total Discount</div><div class="stat-value">₹<%= (summary.discount||0).toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="bi bi-percent"></i></div><div><div class="stat-label">Total Tax</div><div class="stat-value">₹<%= (summary.tax||0).toFixed(2) %></div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Transactions on <%= reportDateDisplay %></span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Invoice</th><th>Time</th><th>Cashier</th><th>Customer</th><th>Items</th><th>Payment</th><th style="text-align:right">Total</th></tr>
+      </thead>
+      <tbody>
+        <% if (bills.length === 0) { %>
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No sales on this date</td></tr>
+        <% } else { %>
+        <% bills.forEach(function(b){ %>
+        <tr>
+          <td><a href="/admin/billing/<%= b._id %>" class="font-mono text-sm text-accent"><%= b.invoiceNo %></a></td>
+          <td class="text-sm text-muted"><%= moment(b.createdAt).format('hh:mm A') %></td>
+          <td class="text-sm"><%= b.cashierName %></td>
+          <td class="text-sm"><%= b.customerName || '—' %></td>
+          <td><span class="badge badge-muted"><%= b.items.length %></span></td>
+          <td><span class="badge badge-info"><%= b.paymentMethod.toUpperCase() %></span></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--success)">₹<%= b.grandTotal.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

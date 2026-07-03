@@ -1,0 +1,189 @@
+<script>
+  window.POS_CONFIG = {
+    currencySymbol: '<%= settings.currencySymbol || "₹" %>',
+    autoPrint: <%= settings.autoPrint ? 'true' : 'false' %>,
+    printerSize: '<%= settings.printerSize || "80mm" %>'
+  };
+</script>
+
+<div class="pos-layout">
+
+  <!-- Top Bar -->
+  <div class="pos-topbar">
+    <div class="pos-brand">
+      <div class="pos-brand-icon"><i class="bi bi-bag-check"></i></div>
+      <span><%= settings.storeName %></span>
+    </div>
+
+    <!-- Customer Info -->
+    <div class="pos-customer-bar" style="flex:1;max-width:440px;padding:0 16px;border:none">
+      <input type="text" id="customerName" placeholder="Customer Name (optional)" />
+      <input type="text" id="customerPhone" placeholder="Phone (optional)" />
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="heldOrdersBtn" class="btn btn-ghost btn-sm">
+        <i class="bi bi-pause-circle"></i> Held
+        <% if (heldOrders.length > 0) { %>
+        <span style="background:var(--accent);color:#fff;border-radius:100px;padding:1px 7px;font-size:0.7rem;margin-left:2px"><%= heldOrders.length %></span>
+        <% } %>
+      </button>
+      <button id="posThemeToggle" class="btn btn-ghost btn-icon" title="Toggle Theme">
+        <i class="bi bi-sun"></i>
+      </button>
+      <% if (cashier.role === 'admin') { %>
+      <a href="/admin/dashboard" class="btn btn-ghost btn-sm"><i class="bi bi-grid-1x2"></i> Admin</a>
+      <% } %>
+      <form action="/auth/logout" method="POST" style="margin:0">
+        <button class="btn btn-ghost btn-sm"><i class="bi bi-box-arrow-right"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Left Panel: Search + Cart -->
+  <div class="pos-left" style="position:relative">
+
+    <!-- Search -->
+    <div class="pos-search-area">
+      <div class="pos-search-wrap">
+        <div class="pos-search-input-wrap">
+          <i class="bi bi-upc-scan"></i>
+          <input type="text"
+                 id="posSearchInput"
+                 placeholder="Search product or scan barcode… (F2)"
+                 autocomplete="off"
+                 spellcheck="false" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Results Dropdown -->
+    <div class="pos-search-results" id="searchResults"></div>
+
+    <!-- Cart -->
+    <div class="cart-area">
+      <div class="cart-empty" id="cartEmpty">
+        <i class="bi bi-cart3"></i>
+        <p>Cart is empty — scan or search a product</p>
+        <div class="text-xs text-muted">Press <span class="kbd">F2</span> to focus search</div>
+      </div>
+
+      <div id="cartTableWrap" style="display:none">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th style="width:40%">Product</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Disc (₹)</th>
+              <th style="text-align:right">Total</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Bar -->
+    <div class="shortcut-bar">
+      <span class="shortcut-hint"><span class="kbd">F2</span> Search</span>
+      <span class="shortcut-hint"><span class="kbd">F3</span> Held Orders</span>
+      <span class="shortcut-hint"><span class="kbd">F4</span> Hold</span>
+      <span class="shortcut-hint"><span class="kbd">F8</span> Clear</span>
+      <span class="shortcut-hint"><span class="kbd">F10</span> Charge</span>
+      <span class="shortcut-hint"><span class="kbd">+/-</span> Qty</span>
+      <span class="shortcut-hint"><span class="kbd">Del</span> Remove Row</span>
+      <span class="shortcut-hint"><span class="kbd">↑↓</span> Navigate</span>
+    </div>
+  </div>
+
+  <!-- Right Panel: Payment -->
+  <div class="pos-right">
+
+    <!-- Order Summary -->
+    <div class="pos-summary">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">Order Summary</div>
+      <div class="summary-row">
+        <span class="label">Subtotal</span>
+        <span class="value" id="summarySubtotal">₹0.00</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Discount</span>
+        <span class="value text-danger" id="summaryDiscount">- ₹0.00</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Tax</span>
+        <span class="value" id="summaryTax">₹0.00</span>
+      </div>
+      <div class="summary-row grand">
+        <span>Grand Total</span>
+        <span class="value" id="summaryGrandTotal">₹0.00</span>
+      </div>
+    </div>
+
+    <!-- Payment Method Tabs -->
+    <div class="payment-tabs">
+      <button class="pay-tab active" data-method="cash"><i class="bi bi-cash"></i> Cash</button>
+      <button class="pay-tab" data-method="upi"><i class="bi bi-phone"></i> UPI</button>
+      <button class="pay-tab" data-method="card"><i class="bi bi-credit-card"></i> Card</button>
+      <button class="pay-tab" data-method="mixed"><i class="bi bi-arrows-collapse"></i> Mixed</button>
+    </div>
+
+    <!-- Payment Amount Inputs -->
+    <div class="payment-inputs">
+      <div class="payment-input-group">
+        <div class="payment-input-label">Cash Received</div>
+        <input type="number" id="cashReceived" class="payment-input" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="payment-input-group" style="display:none">
+        <div class="payment-input-label">UPI Amount</div>
+        <input type="number" id="upiAmount" class="payment-input" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="payment-input-group" style="display:none">
+        <div class="payment-input-label">Card Amount</div>
+        <input type="number" id="cardAmount" class="payment-input" placeholder="0.00" min="0" step="0.01" />
+      </div>
+    </div>
+
+    <!-- Balance -->
+    <div class="balance-display">
+      <span class="balance-label">Balance / Change</span>
+      <span class="balance-value positive" id="balanceDisplay">₹0.00</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="pos-action-bar">
+      <button class="btn-charge" id="chargeBtn" disabled>
+        <i class="bi bi-check-circle-fill"></i> Charge — F10
+      </button>
+      <div class="btn-hold-clear">
+        <button id="holdBtn"><i class="bi bi-pause-circle"></i> Hold (F4)</button>
+        <button id="clearBtn" style="color:var(--danger)"><i class="bi bi-trash3"></i> Clear (F8)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Held Orders Drawer -->
+<div class="overlay" id="drawerOverlay"></div>
+<div class="held-drawer" id="heldDrawer">
+  <div class="held-drawer-header">
+    <span><i class="bi bi-pause-circle"></i> Held Orders</span>
+    <button id="closeHeldDrawer" class="btn btn-ghost btn-icon"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="held-drawer-body" id="heldOrderList">
+    <p style="color:var(--text-muted);text-align:center;padding:20px;font-size:0.875rem">Loading...</p>
+  </div>
+</div>
+
+<!-- Toast container will be created by JS -->
+<style>
+.pos-toast-container { position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center; }
+.pos-toast { padding:10px 18px;border-radius:8px;font-size:0.875rem;font-weight:500;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+.pos-toast.show { opacity:1;transform:translateY(0); }
+.pos-toast-success { background:var(--success);color:#fff; }
+.pos-toast-danger  { background:var(--danger);color:#fff; }
+.pos-toast-warning { background:var(--warning);color:#1a1d2e; }
+.pos-toast-info    { background:var(--accent);color:#fff; }
+</style>

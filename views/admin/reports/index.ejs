@@ -1,0 +1,27 @@
+<div class="page-header">
+  <div class="page-header-left"><h1>Reports</h1><p>Sales analytics and data exports</p></div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+  <% const reports = [
+    {href:'/admin/reports/daily',icon:'bi-calendar-day',label:'Daily Report',desc:'Sales breakdown by day',color:'info'},
+    {href:'/admin/reports/monthly',icon:'bi-calendar-month',label:'Monthly Report',desc:'Month-by-month analysis',color:'accent'},
+    {href:'/admin/reports/yearly',icon:'bi-calendar3',label:'Yearly Report',desc:'Annual revenue overview',color:'success'},
+    {href:'/admin/reports/cashier',icon:'bi-person-badge',label:'Cashier Report',desc:'Performance per cashier',color:'warning'},
+    {href:'/admin/reports/products',icon:'bi-bar-chart',label:'Product Report',desc:'Top selling products',color:'purple'},
+    {href:'/admin/reports/inventory',icon:'bi-clipboard-data',label:'Inventory Report',desc:'Current stock valuation',color:'red'},
+  ]; %>
+  <% reports.forEach(function(r){ %>
+  <a href="<%= r.href %>" style="text-decoration:none">
+    <div class="card" style="display:flex;gap:14px;align-items:flex-start;transition:border-color var(--transition);cursor:pointer" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div class="stat-icon <%= r.color === 'accent' || r.color === 'purple' ? 'purple' : r.color === 'success' ? 'green' : r.color === 'warning' ? 'amber' : r.color === 'red' ? 'red' : 'blue' %>">
+        <i class="bi <%= r.icon %>"></i>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:.9rem"><%= r.label %></div>
+        <div class="text-xs text-muted mt-4"><%= r.desc %></div>
+      </div>
+    </div>
+  </a>
+  <% }) %>
+</div>

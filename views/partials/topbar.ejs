@@ -1,0 +1,30 @@
+<header class="topbar">
+  <div class="topbar-left">
+    <button id="sidebarToggle" class="btn btn-ghost btn-icon" style="display:none" title="Menu">
+      <i class="bi bi-list" style="font-size:1.2rem"></i>
+    </button>
+    <h1 class="topbar-title"><%= title %></h1>
+  </div>
+
+  <div class="topbar-right">
+    <button id="themeToggle" class="btn btn-ghost btn-icon" title="Toggle theme">
+      <i class="bi bi-sun"></i>
+    </button>
+
+    <a href="/auth/change-password" class="btn btn-ghost btn-sm" title="Change password">
+      <i class="bi bi-key"></i>
+    </a>
+
+    <form action="/auth/logout" method="POST" style="margin:0">
+      <button type="submit" class="btn btn-ghost btn-sm">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </button>
+    </form>
+  </div>
+</header>
+
+<style>
+@media (max-width: 1024px) {
+  #sidebarToggle { display: inline-flex !important; }
+}
+</style>

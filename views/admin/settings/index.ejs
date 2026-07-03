@@ -1,0 +1,113 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Store Settings</h1>
+    <p>Configure your store information and receipt preferences</p>
+  </div>
+</div>
+
+<div style="max-width:680px">
+  <% if (errors && errors.length > 0) { %>
+  <div class="alert alert-danger mb-16">
+    <% errors.forEach(function(e){ %><div><i class="bi bi-dot"></i> <%= e.message %></div><% }) %>
+  </div>
+  <% } %>
+
+  <form action="/admin/settings" method="POST" data-once>
+
+    <!-- Store Info -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-shop" style="color:var(--accent)"></i> Store Information</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Store Name *</label>
+        <input type="text" name="storeName" class="form-control"
+               value="<%= settings.storeName %>" required placeholder="My Mini Supermarket" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <textarea name="address" class="form-control" rows="2"
+                  placeholder="Shop address for receipt"><%= settings.address %></textarea>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="text" name="phone" class="form-control"
+                 value="<%= settings.phone %>" placeholder="+91 98765 43210" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control"
+                 value="<%= settings.email %>" placeholder="store@email.com" />
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">GST Number</label>
+          <input type="text" name="gstNumber" class="form-control font-mono"
+                 value="<%= settings.gstNumber %>" placeholder="22AAAAA0000A1Z5" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Currency Symbol</label>
+          <input type="text" name="currencySymbol" class="form-control"
+                 value="<%= settings.currencySymbol %>" placeholder="₹" maxlength="5" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Receipt Settings -->
+    <div class="card mb-16">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-receipt" style="color:var(--accent)"></i> Receipt Settings</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Footer Message</label>
+        <input type="text" name="receiptFooterMessage" class="form-control"
+               value="<%= settings.receiptFooterMessage %>"
+               placeholder="Thank you for shopping with us!" maxlength="200" />
+        <div class="text-xs text-muted mt-4">Appears at the bottom of every printed receipt</div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Default Printer Size</label>
+          <select name="printerSize" class="form-select">
+            <option value="80mm" <%= settings.printerSize === '80mm' ? 'selected' : '' %>>80mm (Standard)</option>
+            <option value="58mm" <%= settings.printerSize === '58mm' ? 'selected' : '' %>>58mm (Compact)</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end">
+          <label class="form-label">Auto Print after Billing</label>
+          <label class="form-check" style="margin-top:8px">
+            <input type="checkbox" name="autoPrint" class="form-check-input" <%= settings.autoPrint ? 'checked' : '' %> />
+            <span class="form-check-label">Open print dialog automatically</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Settings -->
+    <div class="card mb-20">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-archive" style="color:var(--accent)"></i> Inventory Defaults</span>
+      </div>
+      <div class="form-group" style="max-width:220px">
+        <label class="form-label">Default Low Stock Alert Threshold</label>
+        <input type="number" name="lowStockThresholdDefault" class="form-control"
+               value="<%= settings.lowStockThresholdDefault %>" min="0" placeholder="5" />
+        <div class="text-xs text-muted mt-4">Applied when creating new products</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="bi bi-check-lg"></i> Save Settings
+      </button>
+    </div>
+  </form>
+</div>

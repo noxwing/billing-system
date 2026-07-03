@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt - <%= bill.invoiceNo %></title>
+  <link rel="stylesheet" href="/css/print.css" />
+</head>
+<body>
+<div class="print-preview-page no-print">
+  <div class="print-actions">
+    <button class="btn-print-now" onclick="window.print()"><i>🖨</i> Print Now</button>
+    <button class="btn-close-print" onclick="window.close()">Close</button>
+    <a href="/billing/<%= bill._id %>/print/58mm" style="padding:9px 20px;background:#e5e7eb;color:#111;border-radius:6px;font-size:.875rem;font-weight:600;text-decoration:none">58mm</a>
+  </div>
+</div>
+
+<div class="receipt-paper receipt-80mm">
+  <div class="receipt-wrap">
+
+    <!-- Header -->
+    <div class="receipt-header">
+      <div class="receipt-store-name"><%= settings.storeName %></div>
+      <% if (settings.address) { %><div class="receipt-address"><%= settings.address %></div><% } %>
+      <% if (settings.phone) { %><div class="receipt-address">Ph: <%= settings.phone %></div><% } %>
+      <% if (settings.gstNumber) { %><div class="receipt-gst">GST: <%= settings.gstNumber %></div><% } %>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <!-- Invoice Meta -->
+    <div class="receipt-meta">
+      <div class="receipt-meta-row"><span>Invoice:</span><span><strong><%= bill.invoiceNo %></strong></span></div>
+      <div class="receipt-meta-row"><span>Date:</span><span><%= new Date(bill.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></span></div>
+      <div class="receipt-meta-row"><span>Time:</span><span><%= new Date(bill.createdAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></span></div>
+      <div class="receipt-meta-row"><span>Cashier:</span><span><%= bill.cashierName %></span></div>
+      <% if (bill.customerName) { %><div class="receipt-meta-row"><span>Customer:</span><span><%= bill.customerName %></span></div><% } %>
+      <% if (bill.customerPhone) { %><div class="receipt-meta-row"><span>Phone:</span><span><%= bill.customerPhone %></span></div><% } %>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <!-- Items Header -->
+    <div class="receipt-items-header">
+      <span class="item-name">Item</span>
+      <span class="item-qty">Qty</span>
+      <span class="item-price">Rate</span>
+      <span class="item-total">Total</span>
+    </div>
+    <div class="receipt-divider-solid"></div>
+
+    <!-- Items -->
+    <% bill.items.forEach(function(item){ %>
+    <div class="receipt-item-row">
+      <span class="item-name">
+        <%= item.name %>
+        <% if (item.discount > 0) { %><div class="item-disc">Disc: -<%= settings.currencySymbol %><%= item.discount.toFixed(2) %></div><% } %>
+        <% if (item.taxPercent > 0) { %><div class="item-disc">Tax <%= item.taxPercent %>%</div><% } %>
+      </span>
+      <span class="item-qty"><%= item.qty %></span>
+      <span class="item-price"><%= settings.currencySymbol %><%= item.unitPrice.toFixed(2) %></span>
+      <span class="item-total"><%= settings.currencySymbol %><%= item.lineSubtotal.toFixed(2) %></span>
+    </div>
+    <% }) %>
+
+    <div class="receipt-divider-solid"></div>
+
+    <!-- Totals -->
+    <div class="receipt-totals">
+      <div class="receipt-total-row"><span>Subtotal</span><span><%= settings.currencySymbol %><%= bill.subtotal.toFixed(2) %></span></div>
+      <% if (bill.discountTotal > 0) { %>
+      <div class="receipt-total-row"><span>Discount</span><span>-<%= settings.currencySymbol %><%= bill.discountTotal.toFixed(2) %></span></div>
+      <% } %>
+      <% if (bill.taxTotal > 0) { %>
+      <div class="receipt-total-row"><span>Tax</span><span><%= settings.currencySymbol %><%= bill.taxTotal.toFixed(2) %></span></div>
+      <% } %>
+    </div>
+
+    <div class="receipt-divider-double"></div>
+    <div class="receipt-grand-row">
+      <span>TOTAL</span>
+      <span><%= settings.currencySymbol %><%= bill.grandTotal.toFixed(2) %></span>
+    </div>
+    <div class="receipt-divider"></div>
+
+    <!-- Payment Details -->
+    <div class="receipt-payment">
+      <div class="receipt-meta-row"><span>Payment:</span><span><%= bill.paymentMethod.toUpperCase() %></span></div>
+      <% if (bill.paymentDetails.cashReceived > 0) { %>
+      <div class="receipt-meta-row"><span>Cash Received:</span><span><%= settings.currencySymbol %><%= bill.paymentDetails.cashReceived.toFixed(2) %></span></div>
+      <% } %>
+      <% if (bill.paymentDetails.upiAmount > 0) { %>
+      <div class="receipt-meta-row"><span>UPI:</span><span><%= settings.currencySymbol %><%= bill.paymentDetails.upiAmount.toFixed(2) %></span></div>
+      <% } %>
+      <% if (bill.paymentDetails.cardAmount > 0) { %>
+      <div class="receipt-meta-row"><span>Card:</span><span><%= settings.currencySymbol %><%= bill.paymentDetails.cardAmount.toFixed(2) %></span></div>
+      <% } %>
+      <% if (bill.paymentDetails.balance > 0) { %>
+      <div class="receipt-meta-row"><span>Change:</span><span><%= settings.currencySymbol %><%= bill.paymentDetails.balance.toFixed(2) %></span></div>
+      <% } %>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <!-- Bill ID barcode (plain text) -->
+    <div class="receipt-barcode"><%= bill.invoiceNo %></div>
+
+    <!-- Footer -->
+    <div class="receipt-footer">
+      <%= settings.receiptFooterMessage %>
+      <div style="margin-top:4px;font-size:9px">Items sold are not returnable without receipt.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  window.addEventListener('load', function () {
+    // Auto-focus for print dialog (when opened in popup)
+    if (window.opener) {
+      window.focus();
+    }
+  });
+</script>
+</body>
+</html>

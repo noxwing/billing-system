@@ -1,0 +1,80 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Inventory Report</h1>
+    <p>Stock valuation as of <%= new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}) %></p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="stat-grid mb-20">
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="bi bi-box-seam"></i></div>
+    <div>
+      <div class="stat-label">Total SKUs</div>
+      <div class="stat-value"><%= products.length %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="bi bi-currency-rupee"></i></div>
+    <div>
+      <div class="stat-label">Stock Value (Cost)</div>
+      <div class="stat-value">₹<%= totalValue.toFixed(2) %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="bi bi-exclamation-triangle"></i></div>
+    <div>
+      <div class="stat-label">Out of Stock</div>
+      <div class="stat-value"><%= products.filter(p => !p.unlimitedStock && p.stock <= 0).length %></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>SKU</th>
+          <th>Category</th>
+          <th style="text-align:center">Stock</th>
+          <th style="text-align:right">Cost Price</th>
+          <th style="text-align:right">Sell Price</th>
+          <th style="text-align:right">Value (Cost)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.forEach(function(p, i){ %>
+        <tr>
+          <td class="text-xs text-muted"><%= i+1 %></td>
+          <td class="text-sm font-semibold"><%= p.name %></td>
+          <td class="font-mono text-xs"><%= p.sku %></td>
+          <td class="text-sm"><%= p.category ? p.category.name : '—' %></td>
+          <td style="text-align:center" class="font-mono font-bold <%= !p.unlimitedStock && p.stock <= 0 ? 'text-danger' : !p.unlimitedStock && p.stock <= p.lowStockThreshold ? 'text-warning' : 'text-success' %>">
+            <%= p.unlimitedStock ? '∞' : p.stock %>
+          </td>
+          <td style="text-align:right;font-family:var(--font-mono)" class="text-sm">₹<%= p.purchasePrice.toFixed(2) %></td>
+          <td style="text-align:right;font-family:var(--font-mono)" class="text-sm">₹<%= p.sellingPrice.toFixed(2) %></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:600">
+            <%= p.unlimitedStock ? '—' : '₹' + (p.stock * p.purchasePrice).toFixed(2) %>
+          </td>
+          <td><span class="badge <%= p.status === 'active' ? 'badge-success' : 'badge-muted' %>"><%= p.status %></span></td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr style="font-weight:700;border-top:2px solid var(--border)">
+          <td colspan="7" style="text-align:right;padding:10px 14px;font-size:.875rem">Total Stock Value (Cost):</td>
+          <td style="text-align:right;font-family:var(--font-mono);padding:10px 14px;color:var(--success)">₹<%= totalValue.toFixed(2) %></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

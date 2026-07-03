@@ -1,0 +1,77 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><%= isEdit ? 'Edit Staff' : 'Add Staff Member' %></h1>
+    <p><%= isEdit ? 'Update staff information' : 'Create a new staff account' %></p>
+  </div>
+  <a href="/admin/staff" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div style="max-width:560px">
+  <div class="card">
+    <% if (errors && errors.length > 0) { %>
+    <div class="alert alert-danger mb-16">
+      <div><% errors.forEach(function(e){ %><div><i class="bi bi-dot"></i> <%= e.message %></div><% }) %></div>
+    </div>
+    <% } %>
+
+    <form action="/admin/staff<%= isEdit ? '/' + staffMember._id : '' %>" method="POST" data-once>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" name="name" class="form-control"
+                 value="<%= staffMember.name || '' %>"
+                 placeholder="Full name" required autofocus />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input type="text" name="username" class="form-control"
+                 value="<%= staffMember.username || '' %>"
+                 placeholder="Unique username"
+                 <%= isEdit ? 'readonly style="opacity:0.6"' : '' %>
+                 required />
+          <% if (isEdit) { %><div class="form-error">Username cannot be changed</div><% } %>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control"
+                 value="<%= staffMember.email || '' %>"
+                 placeholder="Optional" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-control"
+                 value="<%= staffMember.phone || '' %>"
+                 placeholder="Optional" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <select name="role" class="form-select" required>
+          <option value="staff" <%= (staffMember.role === 'staff' || !staffMember.role) ? 'selected' : '' %>>Staff (POS only)</option>
+          <option value="admin" <%= staffMember.role === 'admin' ? 'selected' : '' %>>Admin (Full access)</option>
+        </select>
+      </div>
+
+      <% if (!isEdit) { %>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" name="password" class="form-control"
+               placeholder="Min 6 chars, at least 1 number" required />
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">At least 6 characters including one number</div>
+      </div>
+      <% } %>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-<%= isEdit ? 'check-lg' : 'person-plus' %>"></i>
+          <%= isEdit ? 'Save Changes' : 'Create Staff' %>
+        </button>
+        <a href="/admin/staff" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>

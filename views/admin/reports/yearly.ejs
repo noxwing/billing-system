@@ -1,0 +1,58 @@
+<%
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+%>
+<div class="page-header">
+  <div class="page-header-left"><h1>Yearly Report</h1><p><%= reportYear %></p></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="GET" action="/admin/reports/yearly">
+      <select name="year" class="form-select" style="width:auto" onchange="this.form.submit()">
+        <% availableYears.forEach(function(y){ %>
+        <option value="<%= y %>" <%= y === reportYear ? 'selected' : '' %>><%= y %></option>
+        <% }) %>
+      </select>
+    </form>
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="stat-grid mb-20">
+  <div class="stat-card"><div class="stat-icon green"><i class="bi bi-cash-stack"></i></div><div><div class="stat-label">Annual Revenue</div><div class="stat-value">₹<%= summary.total.toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon purple"><i class="bi bi-receipt"></i></div><div><div class="stat-label">Total Transactions</div><div class="stat-value"><%= summary.count %></div></div></div>
+  <div class="stat-card"><div class="stat-icon amber"><i class="bi bi-tag"></i></div><div><div class="stat-label">Total Discount</div><div class="stat-value">₹<%= (summary.discount||0).toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="bi bi-percent"></i></div><div><div class="stat-label">Total Tax</div><div class="stat-value">₹<%= (summary.tax||0).toFixed(2) %></div></div></div>
+</div>
+
+<div class="card mb-16">
+  <div class="card-header"><span class="card-title">Monthly Revenue — <%= reportYear %></span></div>
+  <canvas id="yearlyChart" height="100"></canvas>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Monthly Breakdown</span></div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Month</th><th>Transactions</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>
+        <% const filledMonths = []; for(let m=1;m<=12;m++){ const found = monthlyBreakdown.find(d=>d._id===m); filledMonths.push({month:m, total:found?found.total:0, count:found?found.count:0}); } %>
+        <% filledMonths.forEach(function(d){ %>
+        <tr>
+          <td><a href="/admin/reports/monthly?month=<%= reportYear %>-<%= String(d.month).padStart(2,'0') %>" class="text-accent text-sm"><%= MONTHS[d.month-1] %></a></td>
+          <td><span class="badge badge-muted"><%= d.count %></span></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:600;color:<%= d.total > 0 ? 'var(--success)' : 'var(--text-muted)' %>">₹<%= d.total.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const labels = <%- JSON.stringify(filledMonths.map(d => MONTHS[d.month-1].slice(0,3))) %>;
+const data   = <%- JSON.stringify(filledMonths.map(d => d.total)) %>;
+new Chart(document.getElementById('yearlyChart').getContext('2d'), {
+  type:'bar',
+  data:{ labels, datasets:[{ label:'Revenue', data, backgroundColor:'rgba(34,197,94,0.2)', borderColor:'rgba(34,197,94,1)', borderWidth:2, borderRadius:4 }] },
+  options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#9ba3c5'} }, y:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#9ba3c5',callback:v=>'₹'+v} } } }
+});
+</script>

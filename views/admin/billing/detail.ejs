@@ -1,0 +1,80 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><%= bill.invoiceNo %></h1>
+    <p><%= moment(bill.createdAt).format('DD MMMM YYYY, hh:mm A') %></p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/billing/<%= bill._id %>/print/<%= settings.printerSize %>" target="_blank" class="btn btn-primary"><i class="bi bi-printer"></i> Print</a>
+    <a href="/admin/billing" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<div style="max-width:680px">
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+      <div><div class="text-xs text-muted">Cashier</div><div class="font-semibold"><%= bill.cashierName %></div></div>
+      <div>
+        <div class="text-xs text-muted">Customer</div>
+        <div class="font-semibold"><%= bill.customerName || 'Walk-in Customer' %></div>
+        <% if (bill.customerPhone) { %><div class="text-xs text-muted"><%= bill.customerPhone %></div><% } %>
+      </div>
+      <div><div class="text-xs text-muted">Payment</div><span class="badge badge-info"><%= bill.paymentMethod.toUpperCase() %></span></div>
+      <div><div class="text-xs text-muted">Status</div><span class="badge badge-success"><%= bill.status %></span></div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th style="text-align:right">Rate</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Discount</th>
+            <th style="text-align:right">Tax</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% bill.items.forEach(function(item){ %>
+          <tr>
+            <td>
+              <div class="font-semibold text-sm"><%= item.name %></div>
+              <div class="text-xs text-muted font-mono"><%= item.barcode %></div>
+            </td>
+            <td class="font-mono text-sm" style="text-align:right"><%= settings.currencySymbol %><%=item.unitPrice.toFixed(2) %></td>
+            <td style="text-align:center;font-weight:600"><%= item.qty %></td>
+            <td class="font-mono text-sm" style="text-align:right;color:var(--danger)">
+              <%= item.discount > 0 ? '-'+settings.currencySymbol+item.discount.toFixed(2) : '—' %>
+            </td>
+            <td class="text-sm" style="text-align:right"><%= item.taxPercent > 0 ? item.taxPercent+'%' : '—' %></td>
+            <td class="font-mono font-semibold" style="text-align:right"><%= settings.currencySymbol %><%= item.lineSubtotal.toFixed(2) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);max-width:280px;margin-left:auto">
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.875rem"><span class="text-muted">Subtotal</span><span class="font-mono"><%= settings.currencySymbol %><%= bill.subtotal.toFixed(2) %></span></div>
+      <% if (bill.discountTotal > 0) { %>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.875rem"><span class="text-muted">Discount</span><span class="font-mono text-danger">-<%= settings.currencySymbol %><%= bill.discountTotal.toFixed(2) %></span></div>
+      <% } %>
+      <% if (bill.taxTotal > 0) { %>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.875rem"><span class="text-muted">Tax</span><span class="font-mono"><%= settings.currencySymbol %><%= bill.taxTotal.toFixed(2) %></span></div>
+      <% } %>
+      <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:1.15rem;font-weight:700;border-top:1px solid var(--border);margin-top:6px">
+        <span>Grand Total</span><span class="font-mono text-success"><%= settings.currencySymbol %><%= bill.grandTotal.toFixed(2) %></span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div class="text-xs text-muted font-semibold" style="text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Payment Details</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <% if (bill.paymentDetails.cashReceived > 0) { %><div><div class="text-xs text-muted">Cash Received</div><div class="font-mono font-semibold"><%= settings.currencySymbol %><%= bill.paymentDetails.cashReceived.toFixed(2) %></div></div><% } %>
+        <% if (bill.paymentDetails.upiAmount > 0) { %><div><div class="text-xs text-muted">UPI</div><div class="font-mono font-semibold"><%= settings.currencySymbol %><%= bill.paymentDetails.upiAmount.toFixed(2) %></div></div><% } %>
+        <% if (bill.paymentDetails.cardAmount > 0) { %><div><div class="text-xs text-muted">Card</div><div class="font-mono font-semibold"><%= settings.currencySymbol %><%= bill.paymentDetails.cardAmount.toFixed(2) %></div></div><% } %>
+        <% if (bill.paymentDetails.balance > 0) { %><div><div class="text-xs text-muted">Change Given</div><div class="font-mono font-semibold text-success"><%= settings.currencySymbol %><%= bill.paymentDetails.balance.toFixed(2) %></div></div><% } %>
+      </div>
+    </div>
+  </div>
+</div>

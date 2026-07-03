@@ -1,0 +1,51 @@
+<div class="page-header">
+  <div class="page-header-left"><h1>Cashier Report</h1><p><%= reportMonthDisplay %></p></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="GET" action="/admin/reports/cashier">
+      <input type="month" name="month" value="<%= reportMonth %>" class="form-control" style="width:auto" onchange="this.form.submit()" />
+    </form>
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Performance — <%= reportMonthDisplay %></span></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cashier</th>
+          <th style="text-align:center">Bills</th>
+          <th style="text-align:right">Avg. Bill Value</th>
+          <th style="text-align:right">Total Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (cashierStats.length === 0) { %>
+        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">No data for this period</td></tr>
+        <% } else { %>
+        <% cashierStats.forEach(function(c, i){ %>
+        <tr>
+          <td>
+            <span style="width:26px;height:26px;background:var(--accent-soft);color:var(--accent);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700"><%= i+1 %></span>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem">
+                <%= c.cashierName.charAt(0).toUpperCase() %>
+              </div>
+              <div class="font-semibold text-sm"><%= c.cashierName %></div>
+            </div>
+          </td>
+          <td style="text-align:center"><span class="badge badge-muted"><%= c.totalBills %></span></td>
+          <td style="text-align:right;font-family:var(--font-mono)">₹<%= (c.avgBillValue||0).toFixed(2) %></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--success)">₹<%= c.totalRevenue.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

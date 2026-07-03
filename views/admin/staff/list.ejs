@@ -1,0 +1,106 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Staff Management</h1>
+    <p><%= total %> member<%= total !== 1 ? 's' : '' %> total</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <form method="GET" action="/admin/staff" style="display:flex;align-items:center">
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="search" value="<%= search %>" placeholder="Search staff..." />
+      </div>
+    </form>
+    <a href="/admin/staff/new" class="btn btn-primary"><i class="bi bi-person-plus"></i> Add Staff</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (staff.length === 0) { %>
+        <tr>
+          <td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">
+            <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:8px;opacity:0.3"></i>
+            No staff members found
+          </td>
+        </tr>
+        <% } else { %>
+        <% staff.forEach(function(member){ %>
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;flex-shrink:0">
+                <%= member.name.charAt(0).toUpperCase() %>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:0.875rem"><%= member.name %></div>
+                <div class="text-xs text-muted"><%= member.email || '—' %></div>
+              </div>
+            </div>
+          </td>
+          <td class="font-mono text-sm">@<%= member.username %></td>
+          <td>
+            <span class="badge <%= member.role === 'admin' ? 'badge-accent' : 'badge-info' %>">
+              <%= member.role.charAt(0).toUpperCase() + member.role.slice(1) %>
+            </span>
+          </td>
+          <td>
+            <span class="badge <%= member.isActive ? 'badge-success' : 'badge-danger' %>">
+              <%= member.isActive ? 'Active' : 'Inactive' %>
+            </span>
+          </td>
+          <td class="text-sm text-muted">
+            <%= member.lastLogin ? new Date(member.lastLogin).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Never' %>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <a href="/admin/staff/<%= member._id %>/edit" class="btn btn-ghost btn-sm" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form action="/admin/staff/<%= member._id %>/toggle-status" method="POST" style="margin:0">
+                <button type="submit" class="btn btn-ghost btn-sm"
+                  title="<%= member.isActive ? 'Deactivate' : 'Activate' %>"
+                  <%= member._id.toString() === currentUser._id.toString() ? 'disabled' : '' %>>
+                  <i class="bi bi-<%= member.isActive ? 'person-slash' : 'person-check' %>"></i>
+                </button>
+              </form>
+              <a href="/admin/staff/<%= member._id %>/reset-password" class="btn btn-ghost btn-sm" title="Reset Password">
+                <i class="bi bi-key"></i>
+              </a>
+              <% if (member._id.toString() !== currentUser._id.toString()) { %>
+              <form action="/admin/staff/<%= member._id %>/delete" method="POST" style="margin:0">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger)"
+                  data-confirm="Delete <%= member.name %>? This cannot be undone." title="Delete">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i = 1; i <= totalPages; i++) { %>
+      <a href="?page=<%= i %>&search=<%= search %>" class="<%= i === currentPage ? 'active' : '' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>

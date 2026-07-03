@@ -1,0 +1,69 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Categories</h1>
+    <p><%= total %> categor<%= total !== 1 ? 'ies' : 'y' %> total</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <form method="GET" action="/admin/categories">
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="search" value="<%= search %>" placeholder="Search..." />
+      </div>
+    </form>
+    <a href="/admin/categories/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Category</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Products</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (categories.length === 0) { %>
+        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">No categories found</td></tr>
+        <% } else { %>
+        <% categories.forEach(function(cat){ %>
+        <tr>
+          <td style="font-weight:600"><%= cat.name %></td>
+          <td class="text-sm text-muted"><%= cat.description || '—' %></td>
+          <td><span class="badge badge-muted"><%= cat.productCount %> products</span></td>
+          <td><span class="badge <%= cat.status === 'active' ? 'badge-success' : 'badge-danger' %>"><%= cat.status %></span></td>
+          <td class="text-sm text-muted"><%= new Date(cat.createdAt).toLocaleDateString('en-IN') %></td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="/admin/categories/<%= cat._id %>/edit" class="btn btn-ghost btn-sm"><i class="bi bi-pencil"></i></a>
+              <% if (cat.productCount === 0) { %>
+              <form action="/admin/categories/<%= cat._id %>/delete" method="POST" style="margin:0">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger)"
+                  data-confirm="Delete category '<%= cat.name %>'?"><i class="bi bi-trash3"></i></button>
+              </form>
+              <% } else { %>
+              <button class="btn btn-ghost btn-sm" disabled title="Cannot delete: has products" style="opacity:0.4"><i class="bi bi-trash3"></i></button>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i=1;i<=totalPages;i++){ %>
+    <a href="?page=<%= i %>&search=<%= search %>" class="<%= i===currentPage?'active':'' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>

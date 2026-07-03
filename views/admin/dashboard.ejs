@@ -1,0 +1,188 @@
+<%
+const currency = '₹';
+%>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
+    <div>
+      <div class="stat-label">Today's Sales</div>
+      <div class="stat-value"><%= currency %><%= (todaySales || 0).toFixed(2) %></div>
+      <div class="stat-sub"><%= todayCount %> transaction<%= todayCount !== 1 ? 's' : '' %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="bi bi-calendar-month"></i></div>
+    <div>
+      <div class="stat-label">This Month</div>
+      <div class="stat-value"><%= currency %><%= (monthSales || 0).toFixed(2) %></div>
+      <div class="stat-sub"><%= monthCount %> transactions</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="bi bi-calendar3"></i></div>
+    <div>
+      <div class="stat-label">This Year</div>
+      <div class="stat-value"><%= currency %><%= (yearSales || 0).toFixed(2) %></div>
+      <div class="stat-sub"><%= yearCount %> transactions</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+    <div>
+      <div class="stat-label">Low / Out of Stock</div>
+      <div class="stat-value"><%= lowStockProducts.length + outOfStockProducts.length %></div>
+      <div class="stat-sub"><%= outOfStockProducts.length %> out of stock</div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:16px">
+
+  <!-- Revenue Chart -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-graph-up" style="color:var(--accent)"></i> Revenue — Last 7 Days</span>
+      <a href="/admin/reports/daily" class="btn btn-ghost btn-sm">Full Report</a>
+    </div>
+    <canvas id="revenueChart" height="120"></canvas>
+  </div>
+
+  <!-- Top Products -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-trophy" style="color:var(--warning)"></i> Top Products</span>
+      <span class="text-xs text-muted">This month</span>
+    </div>
+    <% if (topProducts.length === 0) { %>
+      <p class="text-muted text-sm" style="padding:12px 0">No sales data yet.</p>
+    <% } else { %>
+      <% topProducts.forEach(function(p, i){ %>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="width:22px;height:22px;background:var(--accent-soft);color:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;flex-shrink:0"><%= i+1 %></span>
+        <div style="flex:1;overflow:hidden">
+          <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= p.name %></div>
+          <div class="text-xs text-muted"><%= p.totalQty %> units sold</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:0.8rem;font-weight:700;color:var(--success)"><%= currency %><%= (p.totalRevenue||0).toFixed(0) %></div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+  <!-- Recent Transactions -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-receipt" style="color:var(--info)"></i> Recent Transactions</span>
+      <a href="/admin/billing" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Cashier</th>
+            <th>Method</th>
+            <th style="text-align:right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (recentTransactions.length === 0) { %>
+          <tr><td colspan="4" class="text-muted text-sm" style="padding:20px;text-align:center">No transactions yet</td></tr>
+          <% } else { %>
+          <% recentTransactions.forEach(function(b){ %>
+          <tr>
+            <td>
+              <a href="/admin/billing/<%= b._id %>" style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent)"><%= b.invoiceNo %></a>
+              <div class="text-xs text-muted"><%= moment(b.createdAt).format('hh:mm A') %></div>
+            </td>
+            <td class="text-sm"><%= b.cashierName %></td>
+            <td><span class="badge badge-info"><%= b.paymentMethod.toUpperCase() %></span></td>
+            <td style="text-align:right;font-family:var(--font-mono);font-weight:600"><%= currency %><%= b.grandTotal.toFixed(2) %></td>
+          </tr>
+          <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Low Stock Alert -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="bi bi-exclamation-diamond" style="color:var(--warning)"></i> Stock Alerts</span>
+      <a href="/admin/inventory" class="btn btn-ghost btn-sm">Inventory</a>
+    </div>
+
+    <% if (outOfStockProducts.length > 0) { %>
+    <div style="margin-bottom:10px">
+      <div class="text-xs text-muted font-semibold" style="margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Out of Stock</div>
+      <% outOfStockProducts.forEach(function(p){ %>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="text-sm font-semibold"><%= p.name %></div>
+          <div class="text-xs text-muted"><%= p.sku %></div>
+        </div>
+        <span class="badge badge-danger">Out of Stock</span>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <% if (lowStockProducts.length > 0) { %>
+    <div>
+      <div class="text-xs text-muted font-semibold" style="margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Low Stock</div>
+      <% lowStockProducts.forEach(function(p){ %>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="text-sm font-semibold"><%= p.name %></div>
+          <div class="text-xs text-muted"><%= p.sku %></div>
+        </div>
+        <span class="badge badge-warning"><%= p.stock %> left</span>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <% if (outOfStockProducts.length === 0 && lowStockProducts.length === 0) { %>
+    <p class="text-muted text-sm" style="padding:12px 0">All products are well stocked.</p>
+    <% } %>
+  </div>
+</div>
+
+<script>
+const ctx = document.getElementById('revenueChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: <%- JSON.stringify(revenueChartLabels) %>,
+    datasets: [{
+      label: 'Revenue',
+      data: <%- JSON.stringify(revenueChartData) %>,
+      backgroundColor: 'rgba(108,99,255,0.25)',
+      borderColor: 'rgba(108,99,255,1)',
+      borderWidth: 2,
+      borderRadius: 6,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) { return ' ₹' + ctx.raw.toFixed(2); }
+        }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ba3c5', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ba3c5', font: { size: 11 }, callback: v => '₹' + v } }
+    }
+  }
+});
+</script>

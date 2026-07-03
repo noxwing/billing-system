@@ -1,0 +1,69 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Transaction History</h1>
+    <p><%= total %> transaction<%= total !== 1 ? 's' : '' %></p>
+  </div>
+  <form method="GET" action="/admin/billing" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div class="search-bar">
+      <i class="bi bi-search"></i>
+      <input type="text" name="search" value="<%= search %>" placeholder="Invoice, customer, cashier..." />
+    </div>
+    <input type="date" name="dateFrom" value="<%= dateFrom %>" class="form-control" style="width:auto" />
+    <input type="date" name="dateTo" value="<%= dateTo %>" class="form-control" style="width:auto" />
+    <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-funnel"></i></button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Date & Time</th>
+          <th>Cashier</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th>Payment</th>
+          <th style="text-align:right">Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (bills.length === 0) { %>
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">No transactions found</td></tr>
+        <% } else { %>
+        <% bills.forEach(function(b){ %>
+        <tr>
+          <td><span class="font-mono text-sm text-accent"><%= b.invoiceNo %></span></td>
+          <td class="text-sm">
+            <div><%= moment(b.createdAt).format('DD MMM YYYY') %></div>
+            <div class="text-muted"><%= moment(b.createdAt).format('hh:mm A') %></div>
+          </td>
+          <td class="text-sm"><%= b.cashierName %></td>
+          <td class="text-sm"><%= b.customerName || '—' %></td>
+          <td><span class="badge badge-muted"><%= b.items.length %> items</span></td>
+          <td><span class="badge badge-info"><%= b.paymentMethod.toUpperCase() %></span></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--success)">₹<%= b.grandTotal.toFixed(2) %></td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="/admin/billing/<%= b._id %>" class="btn btn-ghost btn-sm"><i class="bi bi-eye"></i></a>
+              <a href="/billing/<%= b._id %>/print/80mm" target="_blank" class="btn btn-ghost btn-sm"><i class="bi bi-printer"></i></a>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i=1;i<=totalPages;i++){ %>
+    <a href="?page=<%= i %>&search=<%= search %>&dateFrom=<%= dateFrom %>&dateTo=<%= dateTo %>" class="<%= i===currentPage?'active':'' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>

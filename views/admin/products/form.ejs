@@ -1,0 +1,125 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><%= isEdit ? 'Edit Product' : 'Add Product' %></h1>
+  </div>
+  <a href="/admin/products" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div style="max-width:700px">
+  <div class="card">
+    <% if (errors && errors.length > 0) { %>
+    <div class="alert alert-danger mb-16">
+      <% errors.forEach(function(e){ %><div><i class="bi bi-dot"></i> <%= e.message %></div><% }) %>
+    </div>
+    <% } %>
+
+    <form action="/admin/products<%= isEdit ? '/' + product._id : '' %>" method="POST" data-once>
+
+      <div class="form-group">
+        <label class="form-label">Product Name *</label>
+        <input type="text" name="name" class="form-control"
+               value="<%= product.name || '' %>" placeholder="Product name" required autofocus />
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Barcode *</label>
+          <input type="text" name="barcode" class="form-control font-mono"
+                 value="<%= product.barcode || '' %>" placeholder="Scan or type barcode" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">SKU *</label>
+          <input type="text" name="sku" class="form-control font-mono"
+                 value="<%= product.sku || '' %>" placeholder="e.g. BEV-001" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Category *</label>
+        <select name="category" class="form-select" required>
+          <option value="">Select Category</option>
+          <% categories.forEach(function(cat){ %>
+          <option value="<%= cat._id %>"
+            <%= (product.category && product.category.toString() === cat._id.toString()) ? 'selected' : '' %>>
+            <%= cat.name %>
+          </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Purchase Price (₹) *</label>
+          <input type="number" name="purchasePrice" class="form-control"
+                 value="<%= product.purchasePrice || '' %>" placeholder="0.00" step="0.01" min="0" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Selling Price (₹) *</label>
+          <input type="number" name="sellingPrice" class="form-control"
+                 value="<%= product.sellingPrice || '' %>" placeholder="0.00" step="0.01" min="0" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tax (%)</label>
+          <input type="number" name="taxPercent" class="form-control"
+                 value="<%= product.taxPercent || 0 %>" placeholder="0" step="0.01" min="0" max="100" />
+        </div>
+      </div>
+
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Current Stock</label>
+          <input type="number" name="stock" class="form-control"
+                 value="<%= product.stock || 0 %>" placeholder="0" min="0" id="stockInput" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Low Stock Alert Qty</label>
+          <input type="number" name="lowStockThreshold" class="form-control"
+                 value="<%= product.lowStockThreshold || 5 %>" placeholder="5" min="0" />
+        </div>
+        <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end">
+          <label class="form-label">Unlimited Stock</label>
+          <label class="form-check" style="margin-top:8px">
+            <input type="checkbox" name="unlimitedStock" class="form-check-input" id="unlimitedStockToggle"
+                   <%= product.unlimitedStock ? 'checked' : '' %> />
+            <span class="form-check-label">Never runs out</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="active" <%= (!product.status || product.status === 'active') ? 'selected' : '' %>>Active</option>
+            <option value="inactive" <%= product.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" rows="2"
+                  placeholder="Optional product description..."><%= product.description || '' %></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg"></i> <%= isEdit ? 'Save Changes' : 'Create Product' %>
+        </button>
+        <a href="/admin/products" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Disable stock input when unlimited is toggled on
+  const toggle = document.getElementById('unlimitedStockToggle');
+  const stockInput = document.getElementById('stockInput');
+  function syncStockInput() {
+    stockInput.disabled = toggle.checked;
+    stockInput.style.opacity = toggle.checked ? '0.4' : '1';
+  }
+  toggle.addEventListener('change', syncStockInput);
+  syncStockInput();
+</script>

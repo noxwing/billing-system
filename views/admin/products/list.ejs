@@ -1,0 +1,104 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Products</h1>
+    <p><%= total %> product<%= total !== 1 ? 's' : '' %></p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <form method="GET" action="/admin/products" style="display:flex;gap:8px;align-items:center">
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="search" value="<%= search %>" placeholder="Name, barcode, SKU..." />
+      </div>
+      <select name="category" class="form-select" style="width:auto">
+        <option value="">All Categories</option>
+        <% categories.forEach(function(c){ %>
+        <option value="<%= c._id %>" <%= categoryFilter === c._id.toString() ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+      <select name="status" class="form-select" style="width:auto">
+        <option value="">All Status</option>
+        <option value="active" <%= statusFilter === 'active' ? 'selected' : '' %>>Active</option>
+        <option value="inactive" <%= statusFilter === 'inactive' ? 'selected' : '' %>>Inactive</option>
+      </select>
+      <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-funnel"></i></button>
+    </form>
+    <a href="/admin/products/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Product</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Barcode / SKU</th>
+          <th>Category</th>
+          <th style="text-align:right">Price</th>
+          <th>Stock</th>
+          <th>Tax</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (products.length === 0) { %>
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">
+          <i class="bi bi-box-seam" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.3"></i>
+          No products found
+        </td></tr>
+        <% } else { %>
+        <% products.forEach(function(p){ %>
+        <tr>
+          <td>
+            <div style="font-weight:600;font-size:0.875rem"><%= p.name %></div>
+            <% if (p.description) { %><div class="text-xs text-muted" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= p.description %></div><% } %>
+          </td>
+          <td>
+            <div class="font-mono text-sm"><%= p.barcode %></div>
+            <div class="text-xs text-muted"><%= p.sku %></div>
+          </td>
+          <td class="text-sm"><%= p.category ? p.category.name : '—' %></td>
+          <td style="text-align:right">
+            <div class="font-mono font-semibold">₹<%= p.sellingPrice.toFixed(2) %></div>
+            <div class="text-xs text-muted">Cost: ₹<%= p.purchasePrice.toFixed(2) %></div>
+          </td>
+          <td>
+            <% if (p.unlimitedStock) { %>
+            <span class="badge badge-info">∞ Unlimited</span>
+            <% } else if (p.stock <= 0) { %>
+            <span class="badge badge-danger">Out of Stock</span>
+            <% } else if (p.stock <= p.lowStockThreshold) { %>
+            <span class="badge badge-warning"><%= p.stock %> (Low)</span>
+            <% } else { %>
+            <span class="badge badge-success"><%= p.stock %></span>
+            <% } %>
+          </td>
+          <td class="text-sm"><%= p.taxPercent > 0 ? p.taxPercent + '%' : '—' %></td>
+          <td><span class="badge <%= p.status === 'active' ? 'badge-success' : 'badge-muted' %>"><%= p.status %></span></td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="/admin/products/<%= p._id %>" class="btn btn-ghost btn-sm" title="View"><i class="bi bi-eye"></i></a>
+              <a href="/admin/products/<%= p._id %>/edit" class="btn btn-ghost btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+              <form action="/admin/products/<%= p._id %>/delete" method="POST" style="margin:0">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger)"
+                  data-confirm="Delete '<%= p.name %>'? This cannot be undone."><i class="bi bi-trash3"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i=1;i<=totalPages;i++){ %>
+    <a href="?page=<%= i %>&search=<%= search %>&category=<%= categoryFilter %>&status=<%= statusFilter %>" class="<%= i===currentPage?'active':'' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>

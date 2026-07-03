@@ -1,0 +1,54 @@
+<div class="page-header">
+  <div class="page-header-left"><h1>Monthly Report</h1><p><%= reportMonthDisplay %></p></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="GET" action="/admin/reports/monthly">
+      <input type="month" name="month" value="<%= reportMonth %>" class="form-control" style="width:auto" onchange="this.form.submit()" />
+    </form>
+    <button onclick="window.print()" class="btn btn-ghost"><i class="bi bi-printer"></i> Print</button>
+    <a href="/admin/reports" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Reports</a>
+  </div>
+</div>
+
+<div class="stat-grid mb-20">
+  <div class="stat-card"><div class="stat-icon green"><i class="bi bi-cash-stack"></i></div><div><div class="stat-label">Total Revenue</div><div class="stat-value">₹<%= summary.total.toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon purple"><i class="bi bi-receipt"></i></div><div><div class="stat-label">Transactions</div><div class="stat-value"><%= summary.count %></div></div></div>
+  <div class="stat-card"><div class="stat-icon amber"><i class="bi bi-tag"></i></div><div><div class="stat-label">Total Discount</div><div class="stat-value">₹<%= (summary.discount||0).toFixed(2) %></div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="bi bi-calculator"></i></div><div><div class="stat-label">Avg. Per Day</div><div class="stat-value">₹<%= dailyBreakdown.length > 0 ? (summary.total / dailyBreakdown.length).toFixed(0) : '0' %></div></div></div>
+</div>
+
+<div class="card mb-16">
+  <div class="card-header"><span class="card-title">Daily Revenue — <%= reportMonthDisplay %></span></div>
+  <canvas id="monthlyChart" height="100"></canvas>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Daily Breakdown</span></div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Date</th><th>Transactions</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>
+        <% if (dailyBreakdown.length === 0) { %>
+        <tr><td colspan="3" style="text-align:center;padding:40px;color:var(--text-muted)">No data for this month</td></tr>
+        <% } else { %>
+        <% dailyBreakdown.forEach(function(d){ %>
+        <tr>
+          <td><a href="/admin/reports/daily?date=<%= d._id %>" class="text-accent text-sm"><%= moment(d._id).format('DD MMM YYYY') %></a></td>
+          <td><span class="badge badge-muted"><%= d.count %></span></td>
+          <td style="text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--success)">₹<%= d.total.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const labels = <%- JSON.stringify(dailyBreakdown.map(d => d._id.slice(8))) %>;
+const data   = <%- JSON.stringify(dailyBreakdown.map(d => d.total)) %>;
+new Chart(document.getElementById('monthlyChart').getContext('2d'), {
+  type:'bar',
+  data:{ labels, datasets:[{ label:'Revenue', data, backgroundColor:'rgba(108,99,255,0.25)', borderColor:'rgba(108,99,255,1)', borderWidth:2, borderRadius:4 }] },
+  options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#9ba3c5',font:{size:10}} }, y:{ grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#9ba3c5',callback:v=>'₹'+v} } } }
+});
+</script>

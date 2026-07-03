@@ -1,0 +1,60 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Stock Logs</h1>
+    <p>Complete audit trail of all stock changes</p>
+  </div>
+  <a href="/admin/inventory" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Inventory</a>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>Product</th>
+          <th>Type</th>
+          <th style="text-align:center">Change</th>
+          <th style="text-align:center">Stock After</th>
+          <th>Performed By</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (logs.length === 0) { %>
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No stock logs found</td></tr>
+        <% } else { %>
+        <% logs.forEach(function(log){ %>
+        <tr>
+          <td class="text-xs text-muted"><%= moment(log.createdAt).format('DD MMM YY, HH:mm') %></td>
+          <td>
+            <div class="text-sm font-semibold"><%= log.productName %></div>
+            <% if (log.product) { %><div class="text-xs text-muted font-mono"><%= log.product.sku || '' %></div><% } %>
+          </td>
+          <td>
+            <span class="badge <%= log.type === 'sale' ? 'badge-danger' : log.type === 'restock' ? 'badge-success' : log.type === 'refund' ? 'badge-info' : 'badge-warning' %>">
+              <%= log.type %>
+            </span>
+          </td>
+          <td style="text-align:center" class="font-mono font-semibold <%= log.qtyChange > 0 ? 'text-success' : 'text-danger' %>">
+            <%= log.qtyChange > 0 ? '+' : '' %><%= log.qtyChange %>
+          </td>
+          <td style="text-align:center" class="font-mono"><%= log.stockAfter %></td>
+          <td class="text-sm"><%= log.performedBy ? log.performedBy.name : '—' %></td>
+          <td class="text-sm text-muted"><%= log.reason || '—' %></td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i=1;i<=totalPages;i++){ %>
+    <a href="?page=<%= i %>" class="<%= i===currentPage?'active':'' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>

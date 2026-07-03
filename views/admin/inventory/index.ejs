@@ -1,0 +1,107 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Inventory</h1>
+    <p>Stock overview across all products</p>
+  </div>
+  <a href="/admin/inventory/logs" class="btn btn-ghost"><i class="bi bi-clock-history"></i> Stock Logs</a>
+</div>
+
+<div class="stat-grid" style="margin-bottom:16px">
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="bi bi-box-seam"></i></div>
+    <div>
+      <div class="stat-label">Total Products</div>
+      <div class="stat-value"><%= totalCount %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="bi bi-exclamation-triangle"></i></div>
+    <div>
+      <div class="stat-label">Low Stock</div>
+      <div class="stat-value"><%= lowCount %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
+    <div>
+      <div class="stat-label">Out of Stock</div>
+      <div class="stat-value"><%= outCount %></div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<div style="display:flex;gap:8px;margin-bottom:16px">
+  <a href="/admin/inventory?filter=all" class="btn <%= filter === 'all' ? 'btn-primary' : 'btn-ghost' %>">All Products</a>
+  <a href="/admin/inventory?filter=low" class="btn <%= filter === 'low' ? 'btn-warning' : 'btn-ghost' %>">
+    <i class="bi bi-exclamation-triangle"></i> Low Stock (<%= lowCount %>)
+  </a>
+  <a href="/admin/inventory?filter=out" class="btn <%= filter === 'out' ? 'btn-danger' : 'btn-ghost' %>">
+    <i class="bi bi-x-circle"></i> Out of Stock (<%= outCount %>)
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>SKU / Barcode</th>
+          <th>Category</th>
+          <th style="text-align:center">Stock</th>
+          <th style="text-align:center">Alert At</th>
+          <th>Stock Type</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (products.length === 0) { %>
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No products found</td></tr>
+        <% } else { %>
+        <% products.forEach(function(p){ %>
+        <tr>
+          <td>
+            <div class="font-semibold text-sm"><%= p.name %></div>
+          </td>
+          <td>
+            <div class="font-mono text-xs"><%= p.sku %></div>
+            <div class="font-mono text-xs text-muted"><%= p.barcode %></div>
+          </td>
+          <td class="text-sm"><%= p.category ? p.category.name : '—' %></td>
+          <td style="text-align:center">
+            <% if (p.unlimitedStock) { %>
+            <span class="font-bold text-info">∞</span>
+            <% } else if (p.stock <= 0) { %>
+            <span class="font-bold text-danger">0</span>
+            <% } else { %>
+            <span class="font-bold font-mono <%= p.stock <= p.lowStockThreshold ? 'text-warning' : 'text-success' %>"><%= p.stock %></span>
+            <% } %>
+          </td>
+          <td style="text-align:center" class="text-sm text-muted"><%= p.unlimitedStock ? '—' : p.lowStockThreshold %></td>
+          <td>
+            <% if (p.unlimitedStock) { %><span class="badge badge-info">Unlimited</span>
+            <% } else if (p.stock <= 0) { %><span class="badge badge-danger">Out of Stock</span>
+            <% } else if (p.stock <= p.lowStockThreshold) { %><span class="badge badge-warning">Low Stock</span>
+            <% } else { %><span class="badge badge-success">In Stock</span>
+            <% } %>
+          </td>
+          <td>
+            <a href="/admin/products/<%= p._id %>" class="btn btn-ghost btn-sm"><i class="bi bi-eye"></i> Manage</a>
+          </td>
+        </tr>
+        <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (totalPages > 1) { %>
+  <div class="pagination">
+    <% for(let i=1;i<=totalPages;i++){ %>
+    <a href="?page=<%= i %>&filter=<%= filter %>" class="<%= i===currentPage?'active':'' %>"><%= i %></a>
+    <% } %>
+    <span class="pagination-info">Page <%= currentPage %> of <%= totalPages %></span>
+  </div>
+  <% } %>
+</div>
