@@ -36,7 +36,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'blob:'", 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", "blob:", 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com',  'https://cdn.jsdelivr.net', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
