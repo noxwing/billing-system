@@ -25,6 +25,15 @@ function getUnitMeta(unit) {
   return UNIT_META[unit] || UNIT_META.pcs || { short: 'pcs', decimal: false, subUnit: null };
 }
 
+// Weight/volume products (kg, ltr) are almost always sold in small quantities
+// that staff think of in the sub-unit (e.g. "250 g" of rice rather than
+// "0.25 kg"). Defaulting the qty field to the sub-unit means a cashier can
+// type the number straight off a weighing scale and have it price correctly
+// without first touching the unit dropdown.
+function getDefaultDisplayUnit(meta) {
+  return meta && meta.decimal && meta.subUnit ? 'sub' : 'base';
+}
+
 // Round to 3 decimals to avoid floating point drift on weight/volume math
 function roundTo(n, places) {
   const factor = Math.pow(10, places);
@@ -215,7 +224,7 @@ function addToCart(product) {
       unit,
       unitPrice: product.sellingPrice,
       qty: 1,
-      displayUnit: 'base',
+      displayUnit: getDefaultDisplayUnit(meta),
       discount: 0,
       taxPercent: product.taxPercent || 0,
       stock: product.stock,
@@ -255,14 +264,12 @@ function renderCart() {
       <td>
         <input class="cart-discount-input" type="number" min="0" value="${item.discount}"
           placeholder="0"
-          oninput="previewDiscount(${i}, this.value)"
-          onchange="setDiscount(${i}, this.value)"
-          onfocus="selectCartRow(${i})"
+          data-action="discount"
           tabindex="-1" />
       </td>
       <td class="cart-line-total" id="lineTotal-${i}">${CURRENCY}${lineTotal.toFixed(2)}</td>
       <td>
-        <button class="btn-delete-row" onclick="removeFromCart(${i})" tabindex="-1">
+        <button class="btn-delete-row" data-action="remove-row" tabindex="-1">
           <i class="bi bi-trash3"></i>
         </button>
       </td>
@@ -279,7 +286,6 @@ function selectCartRow(idx) {
     tr.classList.toggle('cart-row-selected', Number(tr.dataset.idx) === idx);
   });
 }
-window.selectCartRow = selectCartRow;
 
 // Updates just the line-total cell + order summary while the user is still
 // typing, without touching the input's DOM node (so focus/cursor survive).
@@ -319,10 +325,6 @@ function previewDiscount(idx, val) {
   previewLineTotal(idx);
 }
 
-window.previewWeightQty = previewWeightQty;
-window.previewQty = previewQty;
-window.previewDiscount = previewDiscount;
-
 function renderQtyCell(item, i, meta) {
   if (meta.decimal && meta.subUnit) {
     const displayUnit = item.displayUnit || 'base';
@@ -330,27 +332,23 @@ function renderQtyCell(item, i, meta) {
     const shownAmount = displayUnit === 'sub' ? roundTo(item.qty * factor, 0) : roundTo(item.qty, 3);
     const step = displayUnit === 'sub' ? 1 : 0.001;
     return `<div class="qty-control weight-qty">
-        <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
+        <button class="qty-btn" data-action="qty-dec" tabindex="-1">−</button>
         <input class="qty-input" type="number" min="0" step="${step}" value="${shownAmount}"
-          oninput="previewWeightQty(${i}, this.value)"
-          onchange="setWeightQty(${i}, this.value)"
-          onfocus="selectCartRow(${i})"
+          data-action="qty-weight"
           tabindex="-1" />
-        <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
-        <select class="qty-unit-select" onchange="setDisplayUnit(${i}, this.value)" tabindex="-1">
+        <button class="qty-btn" data-action="qty-inc" tabindex="-1">+</button>
+        <select class="qty-unit-select" data-action="qty-unit" tabindex="-1">
           <option value="base" ${displayUnit === 'base' ? 'selected' : ''}>${meta.short}</option>
           <option value="sub" ${displayUnit === 'sub' ? 'selected' : ''}>${meta.subUnit.short}</option>
         </select>
       </div>`;
   }
   return `<div class="qty-control">
-      <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
+      <button class="qty-btn" data-action="qty-dec" tabindex="-1">−</button>
       <input class="qty-input" type="number" min="1" value="${item.qty}"
-        oninput="previewQty(${i}, this.value)"
-        onchange="setQty(${i}, this.value)"
-        onfocus="selectCartRow(${i})"
+        data-action="qty-plain"
         tabindex="-1" />
-      <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
+      <button class="qty-btn" data-action="qty-inc" tabindex="-1">+</button>
       <span class="qty-unit-label">${meta.short}</span>
     </div>`;
 }
@@ -444,12 +442,53 @@ function removeFromCart(idx) {
   updateTotals();
 }
 
-window.changeQty = changeQty;
-window.setQty = setQty;
-window.setWeightQty = setWeightQty;
-window.setDisplayUnit = setDisplayUnit;
-window.setDiscount = setDiscount;
-window.removeFromCart = removeFromCart;
+// All cart-row interactions (qty +/-, qty typing, unit switch, discount
+// typing, row delete, row selection) are wired here via delegation instead
+// of inline HTML event attributes, since the app's CSP (script-src-attr:
+// 'none') blocks onclick/oninput/onchange/onfocus attributes outright.
+function getRowIndex(el) {
+  const row = el.closest('.cart-row');
+  return row ? Number(row.dataset.idx) : -1;
+}
+
+cartBody.addEventListener('click', function (e) {
+  const btn = e.target.closest('[data-action="qty-inc"], [data-action="qty-dec"], [data-action="remove-row"]');
+  if (!btn) return;
+  const idx = getRowIndex(btn);
+  if (idx < 0) return;
+  const action = btn.dataset.action;
+  if (action === 'qty-inc') changeQty(idx, 1);
+  else if (action === 'qty-dec') changeQty(idx, -1);
+  else if (action === 'remove-row') removeFromCart(idx);
+});
+
+cartBody.addEventListener('input', function (e) {
+  const target = e.target;
+  const idx = getRowIndex(target);
+  if (idx < 0) return;
+  if (target.dataset.action === 'qty-weight') previewWeightQty(idx, target.value);
+  else if (target.dataset.action === 'qty-plain') previewQty(idx, target.value);
+  else if (target.dataset.action === 'discount') previewDiscount(idx, target.value);
+});
+
+cartBody.addEventListener('change', function (e) {
+  const target = e.target;
+  const idx = getRowIndex(target);
+  if (idx < 0) return;
+  if (target.dataset.action === 'qty-weight') setWeightQty(idx, target.value);
+  else if (target.dataset.action === 'qty-plain') setQty(idx, target.value);
+  else if (target.dataset.action === 'discount') setDiscount(idx, target.value);
+  else if (target.dataset.action === 'qty-unit') setDisplayUnit(idx, target.value);
+});
+
+// 'focus' does not bubble, so use 'focusin' to catch focus on any
+// qty/discount input inside a delegated row without rebuilding the DOM.
+cartBody.addEventListener('focusin', function (e) {
+  const target = e.target;
+  if (target.tagName !== 'INPUT') return;
+  const idx = getRowIndex(target);
+  if (idx >= 0) selectCartRow(idx);
+});
 
 /* =============================================
    TOTALS
@@ -710,7 +749,7 @@ function renderHeldList(orders) {
           <div class="held-order-meta">${o.items.length} item${o.items.length !== 1 ? 's' : ''} · ${o.customerName || 'No customer'}</div>
           <div class="held-order-meta" style="margin-top:2px">${new Date(o.createdAt).toLocaleTimeString()}</div>
         </div>
-        <button onclick="deleteHeld('${o._id}', event)" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;font-size:1rem">
+        <button class="btn-delete-held" data-action="delete-held" data-id="${o._id}" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;font-size:1rem">
           <i class="bi bi-trash3"></i>
         </button>
       </div>
@@ -718,10 +757,21 @@ function renderHeldList(orders) {
   `).join('');
 
   heldList.querySelectorAll('.held-order-card').forEach((card) => {
-    card.addEventListener('click', async function () {
+    card.addEventListener('click', async function (e) {
+      if (e.target.closest('[data-action="delete-held"]')) return;
       const id = this.dataset.id;
       await resumeHeldOrder(id);
       closeHeldDrawer();
+    });
+  });
+
+  heldList.querySelectorAll('[data-action="delete-held"]').forEach((btn) => {
+    btn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      const id = this.dataset.id;
+      if (!confirm('Delete this held order?')) return;
+      await fetch(`/pos/held/${id}`, { method: 'DELETE' });
+      openHeldDrawer();
     });
   });
 }
@@ -738,20 +788,23 @@ async function resumeHeldOrder(id) {
       if (!confirm('This will replace the current cart. Continue?')) return;
     }
 
-    cart = held.items.map((item) => ({
-      productId: item.product._id || item.product,
-      name: item.name,
-      barcode: item.barcode || '',
-      sku: item.sku || '',
-      unit: item.unit || (item.product && item.product.unit) || 'pcs',
-      unitPrice: item.unitPrice,
-      qty: item.qty,
-      displayUnit: 'base',
-      discount: item.discount || 0,
-      taxPercent: item.taxPercent || 0,
-      stock: item.product.stock || 0,
-      unlimitedStock: item.product.unlimitedStock || false
-    }));
+    cart = held.items.map((item) => {
+      const unit = item.unit || (item.product && item.product.unit) || 'pcs';
+      return {
+        productId: item.product._id || item.product,
+        name: item.name,
+        barcode: item.barcode || '',
+        sku: item.sku || '',
+        unit,
+        unitPrice: item.unitPrice,
+        qty: item.qty,
+        displayUnit: getDefaultDisplayUnit(getUnitMeta(unit)),
+        discount: item.discount || 0,
+        taxPercent: item.taxPercent || 0,
+        stock: item.product.stock || 0,
+        unlimitedStock: item.product.unlimitedStock || false
+      };
+    });
 
     if (custName && held.customerName)  custName.value  = held.customerName;
     if (custPhone && held.customerPhone) custPhone.value = held.customerPhone;
@@ -766,13 +819,6 @@ async function resumeHeldOrder(id) {
     showToast('Failed to resume order', 'danger');
   }
 }
-
-window.deleteHeld = async function (id, e) {
-  e.stopPropagation();
-  if (!confirm('Delete this held order?')) return;
-  await fetch(`/pos/held/${id}`, { method: 'DELETE' });
-  openHeldDrawer();
-};
 
 /* =============================================
    KEYBOARD SHORTCUTS
