@@ -57,7 +57,7 @@
         <% if (item.discount > 0) { %><div class="item-disc">Disc: -<%= settings.currencySymbol %><%= item.discount.toFixed(2) %></div><% } %>
         <% if (item.taxPercent > 0) { %><div class="item-disc">Tax <%= item.taxPercent %>%</div><% } %>
       </span>
-      <span class="item-qty"><%= item.qty %></span>
+      <span class="item-qty"><%= formatQty(item.qty, item.unit) %></span>
       <span class="item-price"><%= settings.currencySymbol %><%= item.unitPrice.toFixed(2) %></span>
       <span class="item-total"><%= settings.currencySymbol %><%= item.lineSubtotal.toFixed(2) %></span>
     </div>

@@ -11,6 +11,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const expressLayouts = require('express-ejs-layouts');
 const moment = require('moment');
+const { formatQty, getUnitMeta, PRODUCT_UNITS } = require('./utils/units');
 
 const env = require('./config/env');
 const { generalLimiter } = require('./middleware/rateLimiter.middleware');
@@ -87,6 +88,9 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.user || null;
   res.locals.activePath = req.path;
   res.locals.moment = moment;
+  res.locals.formatQty = formatQty;
+  res.locals.getUnitMeta = getUnitMeta;
+  res.locals.PRODUCT_UNITS = PRODUCT_UNITS;
   next();
 });
 

@@ -34,27 +34,38 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Category *</label>
-        <select name="category" class="form-select" required>
-          <option value="">Select Category</option>
-          <% categories.forEach(function(cat){ %>
-          <option value="<%= cat._id %>"
-            <%= (product.category && product.category.toString() === cat._id.toString()) ? 'selected' : '' %>>
-            <%= cat.name %>
-          </option>
-          <% }) %>
-        </select>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select name="category" class="form-select" required>
+            <option value="">Select Category</option>
+            <% categories.forEach(function(cat){ %>
+            <option value="<%= cat._id %>"
+              <%= (product.category && product.category.toString() === cat._id.toString()) ? 'selected' : '' %>>
+              <%= cat.name %>
+            </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sold By (Unit) *</label>
+          <select name="unit" class="form-select" id="unitSelect" required>
+            <% Object.keys(unitOptions).forEach(function(key){ %>
+            <option value="<%= key %>" <%= (product.unit || 'pcs') === key ? 'selected' : '' %>><%= unitOptions[key].label %></option>
+            <% }) %>
+          </select>
+          <div class="text-xs text-muted" style="margin-top:4px" id="unitHint"></div>
+        </div>
       </div>
 
       <div class="form-grid-3">
         <div class="form-group">
-          <label class="form-label">Purchase Price (₹) *</label>
+          <label class="form-label" id="purchasePriceLabel">Purchase Price (₹) *</label>
           <input type="number" name="purchasePrice" class="form-control"
                  value="<%= product.purchasePrice || '' %>" placeholder="0.00" step="0.01" min="0" required />
         </div>
         <div class="form-group">
-          <label class="form-label">Selling Price (₹) *</label>
+          <label class="form-label" id="sellingPriceLabel">Selling Price (₹) *</label>
           <input type="number" name="sellingPrice" class="form-control"
                  value="<%= product.sellingPrice || '' %>" placeholder="0.00" step="0.01" min="0" required />
         </div>
@@ -67,9 +78,9 @@
 
       <div class="form-grid-3">
         <div class="form-group">
-          <label class="form-label">Current Stock</label>
+          <label class="form-label" id="stockLabel">Current Stock</label>
           <input type="number" name="stock" class="form-control"
-                 value="<%= product.stock || 0 %>" placeholder="0" min="0" id="stockInput" />
+                 value="<%= product.stock || 0 %>" placeholder="0" min="0" step="1" id="stockInput" />
         </div>
         <div class="form-group">
           <label class="form-label">Low Stock Alert Qty</label>
@@ -113,12 +124,41 @@
 </div>
 
 <script>
+  // Unit metadata mirrored from the server (utils/units.js)
+  const UNIT_META = <%- JSON.stringify(unitOptions) %>;
+
+  const unitSelect = document.getElementById('unitSelect');
+  const unitHint = document.getElementById('unitHint');
+  const purchasePriceLabel = document.getElementById('purchasePriceLabel');
+  const sellingPriceLabel = document.getElementById('sellingPriceLabel');
+  const stockLabel = document.getElementById('stockLabel');
+  const stockInputEl = document.getElementById('stockInput');
+
+  function syncUnitUI() {
+    const meta = UNIT_META[unitSelect.value] || UNIT_META.pcs;
+    purchasePriceLabel.textContent = `Purchase Price (₹ per ${meta.short}) *`;
+    sellingPriceLabel.textContent = `Selling Price (₹ per ${meta.short}) *`;
+    stockLabel.textContent = `Current Stock (${meta.short})`;
+
+    if (meta.decimal) {
+      stockInputEl.step = '0.001';
+      unitHint.textContent = meta.subUnit
+        ? `Price is set per 1 ${meta.short}. Cashiers can bill in ${meta.subUnit.short} (e.g. ${meta.short === 'kg' ? '500 g' : '250 ml'}) at the POS — it auto-converts.`
+        : '';
+    } else {
+      stockInputEl.step = '1';
+      unitHint.textContent = `Sold as whole ${meta.short}(s), e.g. 3 ${meta.short}.`;
+    }
+  }
+
+  unitSelect.addEventListener('change', syncUnitUI);
+  syncUnitUI();
+
   // Disable stock input when unlimited is toggled on
   const toggle = document.getElementById('unlimitedStockToggle');
-  const stockInput = document.getElementById('stockInput');
   function syncStockInput() {
-    stockInput.disabled = toggle.checked;
-    stockInput.style.opacity = toggle.checked ? '0.4' : '1';
+    stockInputEl.disabled = toggle.checked;
+    stockInputEl.style.opacity = toggle.checked ? '0.4' : '1';
   }
   toggle.addEventListener('change', syncStockInput);
   syncStockInput();

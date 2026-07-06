@@ -19,6 +19,30 @@ let isProcessing = false;
 const CURRENCY = window.POS_CONFIG.currencySymbol || '₹';
 const AUTO_PRINT = window.POS_CONFIG.autoPrint || false;
 const PRINTER_SIZE = window.POS_CONFIG.printerSize || '80mm';
+const UNIT_META = window.POS_CONFIG.unitMeta || {};
+
+function getUnitMeta(unit) {
+  return UNIT_META[unit] || UNIT_META.pcs || { short: 'pcs', decimal: false, subUnit: null };
+}
+
+// Round to 3 decimals to avoid floating point drift on weight/volume math
+function roundTo(n, places) {
+  const factor = Math.pow(10, places);
+  return Math.round(n * factor) / factor;
+}
+
+// Formats a base-unit qty (e.g. kg) for display, switching to sub-unit for small amounts
+function formatQtyLabel(qty, unit) {
+  const meta = getUnitMeta(unit);
+  const n = Number(qty) || 0;
+  if (meta.decimal) {
+    if (meta.subUnit && n > 0 && n < 1) {
+      return `${Math.round(n * meta.subUnit.factor)} ${meta.subUnit.short}`;
+    }
+    return `${roundTo(n, 3)} ${meta.short}`;
+  }
+  return `${n} ${meta.short}`;
+}
 
 /* =============================================
    DOM REFS
@@ -119,7 +143,8 @@ function renderResults() {
   searchResults$.innerHTML = searchResults.map((p, i) => {
     const isOut = !p.unlimitedStock && p.stock <= 0;
     const isLow = !p.unlimitedStock && p.stock > 0 && p.stock <= 5;
-    const stockLabel = p.unlimitedStock ? '∞ In Stock' : isOut ? 'Out of Stock' : isLow ? `Low: ${p.stock}` : `Stock: ${p.stock}`;
+    const unitShort = getUnitMeta(p.unit).short;
+    const stockLabel = p.unlimitedStock ? '∞ In Stock' : isOut ? 'Out of Stock' : isLow ? `Low: ${formatQtyLabel(p.stock, p.unit)}` : `Stock: ${formatQtyLabel(p.stock, p.unit)}`;
     const stockClass = isOut ? 'out-of-stock' : isLow ? 'low-stock' : '';
     return `<div class="pos-result-item${i === searchSelectedIndex ? ' selected' : ''}" data-idx="${i}">
       <div class="pos-result-info">
@@ -127,7 +152,7 @@ function renderResults() {
         <div class="pos-result-meta">${escHtml(p.barcode)} · ${escHtml(p.sku)}</div>
       </div>
       <div class="pos-result-right">
-        <div class="pos-result-price">${CURRENCY}${p.sellingPrice.toFixed(2)}</div>
+        <div class="pos-result-price">${CURRENCY}${p.sellingPrice.toFixed(2)} / ${unitShort}</div>
         <div class="pos-result-stock ${stockClass}">${stockLabel}</div>
       </div>
     </div>`;
@@ -167,10 +192,14 @@ function addToCart(product) {
     return;
   }
 
+  const unit = product.unit || 'pcs';
+  const meta = getUnitMeta(unit);
+
   const existing = cart.findIndex((i) => i.productId === product._id);
   if (existing >= 0) {
     const item = cart[existing];
-    const newQty = item.qty + 1;
+    const step = meta.decimal ? 1 : 1; // scanning again adds 1 base unit either way
+    const newQty = roundTo(item.qty + step, 3);
     if (!product.unlimitedStock && newQty > product.stock) {
       showToast(`Max stock reached for ${product.name}`, 'warning');
       return;
@@ -183,8 +212,10 @@ function addToCart(product) {
       name: product.name,
       barcode: product.barcode,
       sku: product.sku,
+      unit,
       unitPrice: product.sellingPrice,
       qty: 1,
+      displayUnit: 'base',
       discount: 0,
       taxPercent: product.taxPercent || 0,
       stock: product.stock,
@@ -211,29 +242,25 @@ function renderCart() {
 
   cartBody.innerHTML = cart.map((item, i) => {
     const lineTotal = calcLineTotal(item);
+    const meta = getUnitMeta(item.unit);
     return `<tr class="cart-row${i === selectedCartIndex ? ' cart-row-selected' : ''}" data-idx="${i}">
       <td>
         <div class="cart-product-name">${escHtml(item.name)}</div>
         <div class="cart-product-meta">${escHtml(item.barcode)}</div>
       </td>
       <td>
-        <div class="qty-control">
-          <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
-          <input class="qty-input" type="number" min="1" value="${item.qty}"
-            onchange="setQty(${i}, this.value)"
-            onfocus="selectedCartIndex=${i};renderCart()"
-            tabindex="-1" />
-          <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
-        </div>
+        ${renderQtyCell(item, i, meta)}
       </td>
-      <td style="font-family:var(--font-mono)">${CURRENCY}${item.unitPrice.toFixed(2)}</td>
+      <td style="font-family:var(--font-mono)">${CURRENCY}${item.unitPrice.toFixed(2)}<span class="qty-unit-label"> /${meta.short}</span></td>
       <td>
         <input class="cart-discount-input" type="number" min="0" value="${item.discount}"
           placeholder="0"
+          oninput="previewDiscount(${i}, this.value)"
           onchange="setDiscount(${i}, this.value)"
+          onfocus="selectCartRow(${i})"
           tabindex="-1" />
       </td>
-      <td class="cart-line-total">${CURRENCY}${lineTotal.toFixed(2)}</td>
+      <td class="cart-line-total" id="lineTotal-${i}">${CURRENCY}${lineTotal.toFixed(2)}</td>
       <td>
         <button class="btn-delete-row" onclick="removeFromCart(${i})" tabindex="-1">
           <i class="bi bi-trash3"></i>
@@ -241,6 +268,91 @@ function renderCart() {
       </td>
     </tr>`;
   }).join('');
+}
+
+// Highlights the active cart row without rebuilding the table — rebuilding
+// on focus was replacing the input the user had just clicked into, which
+// silently ate their keystrokes. This just toggles a class instead.
+function selectCartRow(idx) {
+  selectedCartIndex = idx;
+  cartBody.querySelectorAll('.cart-row').forEach((tr) => {
+    tr.classList.toggle('cart-row-selected', Number(tr.dataset.idx) === idx);
+  });
+}
+window.selectCartRow = selectCartRow;
+
+// Updates just the line-total cell + order summary while the user is still
+// typing, without touching the input's DOM node (so focus/cursor survive).
+function previewLineTotal(idx) {
+  const item = cart[idx];
+  if (!item) return;
+  const cell = document.getElementById(`lineTotal-${idx}`);
+  if (cell) cell.textContent = `${CURRENCY}${calcLineTotal(item).toFixed(2)}`;
+  updateTotals();
+}
+
+function previewWeightQty(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  const meta = getUnitMeta(item.unit);
+  const displayUnit = item.displayUnit || 'base';
+  const amount = parseFloat(val);
+  if (!isNaN(amount) && amount >= 0) {
+    item.qty = displayUnit === 'sub' && meta.subUnit ? amount / meta.subUnit.factor : amount;
+  }
+  previewLineTotal(idx);
+}
+
+function previewQty(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  const amount = parseInt(val, 10);
+  if (!isNaN(amount) && amount >= 0) item.qty = amount;
+  previewLineTotal(idx);
+}
+
+function previewDiscount(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  const amount = parseFloat(val);
+  item.discount = isNaN(amount) ? 0 : Math.max(0, amount);
+  previewLineTotal(idx);
+}
+
+window.previewWeightQty = previewWeightQty;
+window.previewQty = previewQty;
+window.previewDiscount = previewDiscount;
+
+function renderQtyCell(item, i, meta) {
+  if (meta.decimal && meta.subUnit) {
+    const displayUnit = item.displayUnit || 'base';
+    const factor = meta.subUnit ? meta.subUnit.factor : 1;
+    const shownAmount = displayUnit === 'sub' ? roundTo(item.qty * factor, 0) : roundTo(item.qty, 3);
+    const step = displayUnit === 'sub' ? 1 : 0.001;
+    return `<div class="qty-control weight-qty">
+        <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
+        <input class="qty-input" type="number" min="0" step="${step}" value="${shownAmount}"
+          oninput="previewWeightQty(${i}, this.value)"
+          onchange="setWeightQty(${i}, this.value)"
+          onfocus="selectCartRow(${i})"
+          tabindex="-1" />
+        <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
+        <select class="qty-unit-select" onchange="setDisplayUnit(${i}, this.value)" tabindex="-1">
+          <option value="base" ${displayUnit === 'base' ? 'selected' : ''}>${meta.short}</option>
+          <option value="sub" ${displayUnit === 'sub' ? 'selected' : ''}>${meta.subUnit.short}</option>
+        </select>
+      </div>`;
+  }
+  return `<div class="qty-control">
+      <button class="qty-btn" onclick="changeQty(${i}, -1)" tabindex="-1">−</button>
+      <input class="qty-input" type="number" min="1" value="${item.qty}"
+        oninput="previewQty(${i}, this.value)"
+        onchange="setQty(${i}, this.value)"
+        onfocus="selectCartRow(${i})"
+        tabindex="-1" />
+      <button class="qty-btn" onclick="changeQty(${i}, 1)" tabindex="-1">+</button>
+      <span class="qty-unit-label">${meta.short}</span>
+    </div>`;
 }
 
 function calcLineTotal(item) {
@@ -252,8 +364,16 @@ function calcLineTotal(item) {
 function changeQty(idx, delta) {
   const item = cart[idx];
   if (!item) return;
-  const newQty = item.qty + delta;
-  if (newQty < 1) { removeFromCart(idx); return; }
+  const meta = getUnitMeta(item.unit);
+  let newQty;
+  if (meta.decimal) {
+    const displayUnit = item.displayUnit || 'base';
+    const step = displayUnit === 'sub' && meta.subUnit ? (1 / meta.subUnit.factor) : 0.1;
+    newQty = roundTo(item.qty + delta * step, 3);
+  } else {
+    newQty = item.qty + delta;
+  }
+  if (newQty < (meta.decimal ? 0.001 : 1)) { removeFromCart(idx); return; }
   if (!item.unlimitedStock && newQty > item.stock) {
     showToast('Insufficient stock', 'warning'); return;
   }
@@ -278,6 +398,37 @@ function setQty(idx, val) {
   updateTotals();
 }
 
+// Sets qty for weight/volume items, interpreting the typed amount in whichever
+// unit (base or sub) is currently selected for that row, e.g. "500" + "g" -> 0.5 kg
+function setWeightQty(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  const meta = getUnitMeta(item.unit);
+  const displayUnit = item.displayUnit || 'base';
+  const amount = Math.max(0, parseFloat(val) || 0);
+  let newQty = displayUnit === 'sub' && meta.subUnit ? amount / meta.subUnit.factor : amount;
+  newQty = roundTo(newQty, 3);
+
+  if (newQty <= 0) { removeFromCart(idx); return; }
+  if (!item.unlimitedStock && newQty > item.stock) {
+    showToast('Insufficient stock', 'warning');
+    newQty = roundTo(item.stock, 3);
+  }
+  item.qty = newQty;
+  selectedCartIndex = idx;
+  renderCart();
+  updateTotals();
+}
+
+// Switches which unit (base e.g. kg, or sub e.g. g) the qty input displays/accepts for this row
+function setDisplayUnit(idx, val) {
+  const item = cart[idx];
+  if (!item) return;
+  item.displayUnit = val === 'sub' ? 'sub' : 'base';
+  selectedCartIndex = idx;
+  renderCart();
+}
+
 function setDiscount(idx, val) {
   const item = cart[idx];
   if (!item) return;
@@ -295,6 +446,8 @@ function removeFromCart(idx) {
 
 window.changeQty = changeQty;
 window.setQty = setQty;
+window.setWeightQty = setWeightQty;
+window.setDisplayUnit = setDisplayUnit;
 window.setDiscount = setDiscount;
 window.removeFromCart = removeFromCart;
 
@@ -590,8 +743,10 @@ async function resumeHeldOrder(id) {
       name: item.name,
       barcode: item.barcode || '',
       sku: item.sku || '',
+      unit: item.unit || (item.product && item.product.unit) || 'pcs',
       unitPrice: item.unitPrice,
       qty: item.qty,
+      displayUnit: 'base',
       discount: item.discount || 0,
       taxPercent: item.taxPercent || 0,
       stock: item.product.stock || 0,

@@ -5,7 +5,8 @@ const heldItemSchema = new mongoose.Schema(
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true },
     barcode: { type: String },
-    qty: { type: Number, required: true, min: 1 },
+    unit: { type: String, default: 'pcs' },
+    qty: { type: Number, required: true, min: 0.001 },
     unitPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     taxPercent: { type: Number, default: 0 }

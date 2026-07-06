@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { PRODUCT_STATUS, DEFAULT_LOW_STOCK_THRESHOLD } = require('../config/constants');
+const { UNIT_KEYS, DEFAULT_UNIT } = require('../utils/units');
 
 const productSchema = new mongoose.Schema(
   {
@@ -42,6 +43,11 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       max: 100
+    },
+    unit: {
+      type: String,
+      enum: UNIT_KEYS,
+      default: DEFAULT_UNIT
     },
     stock: {
       type: Number,

@@ -2,7 +2,8 @@
   window.POS_CONFIG = {
     currencySymbol: '<%= settings.currencySymbol || "₹" %>',
     autoPrint: <%= settings.autoPrint ? 'true' : 'false' %>,
-    printerSize: '<%= settings.printerSize || "80mm" %>'
+    printerSize: '<%= settings.printerSize || "80mm" %>',
+    unitMeta: <%- JSON.stringify(unitMeta) %>
   };
 </script>
 

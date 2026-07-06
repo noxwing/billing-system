@@ -1,5 +1,6 @@
 const HeldOrder = require('../models/HeldOrder');
 const StoreSettings = require('../models/StoreSettings');
+const { PRODUCT_UNITS } = require('../utils/units');
 
 // GET /pos
 async function showPOS(req, res, next) {
@@ -14,7 +15,8 @@ async function showPOS(req, res, next) {
       layout: 'partials/pos-layout',
       settings,
       heldOrders,
-      cashier: req.user
+      cashier: req.user,
+      unitMeta: PRODUCT_UNITS
     });
   } catch (err) { next(err); }
 }
@@ -33,6 +35,7 @@ async function holdOrder(req, res, next) {
       product: item.productId || item.product, 
       name: item.name,
       barcode: item.barcode,
+      unit: item.unit || 'pcs',
       qty: item.qty,
       unitPrice: item.unitPrice,
       discount: item.discount,
@@ -57,7 +60,7 @@ async function holdOrder(req, res, next) {
 async function resumeHeldOrder(req, res, next) {
   try {
     const held = await HeldOrder.findOne({ _id: req.params.id, cashier: req.user._id })
-      .populate('items.product', 'name barcode sku sellingPrice taxPercent stock unlimitedStock status');
+      .populate('items.product', 'name barcode sku sellingPrice taxPercent unit stock unlimitedStock status');
 
     if (!held) {
       return res.json({ success: false, message: 'Held order not found' });

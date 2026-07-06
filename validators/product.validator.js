@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const Product = require('../models/Product');
+const { UNIT_KEYS } = require('../utils/units');
 
 const createProductValidator = [
   body('name').trim().notEmpty().withMessage('Product name is required').isLength({ max: 120 }),
@@ -23,8 +24,9 @@ const createProductValidator = [
   body('purchasePrice').isFloat({ min: 0 }).withMessage('Purchase price must be a positive number'),
   body('sellingPrice').isFloat({ min: 0 }).withMessage('Selling price must be a positive number'),
   body('taxPercent').optional({ checkFalsy: true }).isFloat({ min: 0, max: 100 }).withMessage('Tax must be between 0-100'),
-  body('stock').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('Stock must be a positive integer'),
-  body('lowStockThreshold').optional({ checkFalsy: true }).isInt({ min: 0 }),
+  body('unit').optional({ checkFalsy: true }).isIn(UNIT_KEYS).withMessage('Invalid unit'),
+  body('stock').optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage('Stock must be a positive number'),
+  body('lowStockThreshold').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('description').optional({ checkFalsy: true }).isLength({ max: 500 })
 ];
 
@@ -50,8 +52,9 @@ const updateProductValidator = [
   body('purchasePrice').isFloat({ min: 0 }).withMessage('Purchase price must be a positive number'),
   body('sellingPrice').isFloat({ min: 0 }).withMessage('Selling price must be a positive number'),
   body('taxPercent').optional({ checkFalsy: true }).isFloat({ min: 0, max: 100 }),
-  body('stock').optional({ checkFalsy: true }).isInt({ min: 0 }),
-  body('lowStockThreshold').optional({ checkFalsy: true }).isInt({ min: 0 }),
+  body('unit').optional({ checkFalsy: true }).isIn(UNIT_KEYS).withMessage('Invalid unit'),
+  body('stock').optional({ checkFalsy: true }).isFloat({ min: 0 }),
+  body('lowStockThreshold').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('description').optional({ checkFalsy: true }).isLength({ max: 500 })
 ];
 

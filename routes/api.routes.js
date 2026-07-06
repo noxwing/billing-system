@@ -21,7 +21,7 @@ router.get('/products/search', async (req, res, next) => {
       // Exact barcode lookup for scanner
       const product = await Product.findOne({ ...filter, barcode: barcode.trim() })
         .populate('category', 'name')
-        .select('name barcode sku sellingPrice taxPercent stock unlimitedStock category');
+        .select('name barcode sku sellingPrice taxPercent unit stock unlimitedStock category');
 
       if (!product) {
         return res.json({ success: false, message: 'Product not found', products: [] });
@@ -39,7 +39,7 @@ router.get('/products/search', async (req, res, next) => {
       ]
     })
       .populate('category', 'name')
-      .select('name barcode sku sellingPrice taxPercent stock unlimitedStock category')
+      .select('name barcode sku sellingPrice taxPercent unit stock unlimitedStock category')
       .limit(10);
 
     return res.json({ success: true, products });
@@ -53,7 +53,7 @@ router.get('/products/:id', async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate('category', 'name')
-      .select('name barcode sku sellingPrice taxPercent stock unlimitedStock status category');
+      .select('name barcode sku sellingPrice taxPercent unit stock unlimitedStock status category');
 
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
     return res.json({ success: true, product });

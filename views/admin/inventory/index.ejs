@@ -75,10 +75,10 @@
             <% } else if (p.stock <= 0) { %>
             <span class="font-bold text-danger">0</span>
             <% } else { %>
-            <span class="font-bold font-mono <%= p.stock <= p.lowStockThreshold ? 'text-warning' : 'text-success' %>"><%= p.stock %></span>
+            <span class="font-bold font-mono <%= p.stock <= p.lowStockThreshold ? 'text-warning' : 'text-success' %>"><%= formatQty(p.stock, p.unit) %></span>
             <% } %>
           </td>
-          <td style="text-align:center" class="text-sm text-muted"><%= p.unlimitedStock ? '—' : p.lowStockThreshold %></td>
+          <td style="text-align:center" class="text-sm text-muted"><%= p.unlimitedStock ? '—' : formatQty(p.lowStockThreshold, p.unit) %></td>
           <td>
             <% if (p.unlimitedStock) { %><span class="badge badge-info">Unlimited</span>
             <% } else if (p.stock <= 0) { %><span class="badge badge-danger">Out of Stock</span>

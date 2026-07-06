@@ -11,7 +11,8 @@ const billItemSchema = new mongoose.Schema(
     name: { type: String, required: true },
     barcode: { type: String },
     sku: { type: String },
-    qty: { type: Number, required: true, min: 1 },
+    unit: { type: String, default: 'pcs' },
+    qty: { type: Number, required: true, min: 0.001 },
     unitPrice: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0, min: 0 }, // flat amount per line
     taxPercent: { type: Number, default: 0, min: 0 },

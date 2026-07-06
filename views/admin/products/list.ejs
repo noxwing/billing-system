@@ -69,9 +69,9 @@
             <% } else if (p.stock <= 0) { %>
             <span class="badge badge-danger">Out of Stock</span>
             <% } else if (p.stock <= p.lowStockThreshold) { %>
-            <span class="badge badge-warning"><%= p.stock %> (Low)</span>
+            <span class="badge badge-warning"><%= formatQty(p.stock, p.unit) %> (Low)</span>
             <% } else { %>
-            <span class="badge badge-success"><%= p.stock %></span>
+            <span class="badge badge-success"><%= formatQty(p.stock, p.unit) %></span>
             <% } %>
           </td>
           <td class="text-sm"><%= p.taxPercent > 0 ? p.taxPercent + '%' : '—' %></td>

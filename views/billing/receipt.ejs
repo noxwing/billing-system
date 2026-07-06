@@ -53,7 +53,7 @@
               <div class="text-xs text-muted font-mono"><%= item.barcode %></div>
             </td>
             <td class="font-mono text-sm" style="text-align:right"><%= settings.currencySymbol %><%= item.unitPrice.toFixed(2) %></td>
-            <td style="text-align:center;font-weight:600"><%= item.qty %></td>
+            <td style="text-align:center;font-weight:600"><%= formatQty(item.qty, item.unit) %></td>
             <td class="font-mono text-sm" style="text-align:right;color:var(--danger)">
               <%= item.discount > 0 ? '-' + settings.currencySymbol + item.discount.toFixed(2) : '—' %>
             </td>

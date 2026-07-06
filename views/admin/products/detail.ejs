@@ -26,11 +26,15 @@
         </div>
         <div>
           <div class="text-xs text-muted">Purchase Price</div>
-          <div class="font-mono font-semibold">₹<%= product.purchasePrice.toFixed(2) %></div>
+          <div class="font-mono font-semibold">₹<%= product.purchasePrice.toFixed(2) %> / <%= getUnitMeta(product.unit).short %></div>
         </div>
         <div>
           <div class="text-xs text-muted">Selling Price</div>
-          <div class="font-mono font-semibold text-success">₹<%= product.sellingPrice.toFixed(2) %></div>
+          <div class="font-mono font-semibold text-success">₹<%= product.sellingPrice.toFixed(2) %> / <%= getUnitMeta(product.unit).short %></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">Sold By</div>
+          <div class="font-semibold"><%= getUnitMeta(product.unit).label %></div>
         </div>
         <div>
           <div class="text-xs text-muted">Tax</div>
@@ -80,9 +84,9 @@
                 </span>
               </td>
               <td class="font-mono font-semibold <%= log.qtyChange > 0 ? 'text-success' : 'text-danger' %>">
-                <%= log.qtyChange > 0 ? '+' : '' %><%= log.qtyChange %>
+                <%= log.qtyChange > 0 ? '+' : '' %><%= formatQty(log.qtyChange, product.unit) %>
               </td>
-              <td class="font-mono"><%= log.stockAfter %></td>
+              <td class="font-mono"><%= formatQty(log.stockAfter, product.unit) %></td>
               <td class="text-sm"><%= log.performedBy ? log.performedBy.name : '—' %></td>
               <td class="text-sm text-muted"><%= log.reason || '—' %></td>
             </tr>
@@ -107,14 +111,14 @@
           <div class="text-sm text-muted mt-8">Out of Stock</div>
         <% } else { %>
           <div style="font-size:2.5rem;font-weight:700;color:<%= product.stock <= product.lowStockThreshold ? 'var(--warning)' : 'var(--success)' %>">
-            <%= product.stock %>
+            <%= formatQty(product.stock, product.unit) %>
           </div>
-          <div class="text-sm text-muted mt-8">Units available</div>
+          <div class="text-sm text-muted mt-8">Available</div>
           <% if (product.stock <= product.lowStockThreshold) { %>
           <div class="badge badge-warning mt-8">Low Stock Alert</div>
           <% } %>
         <% } %>
-        <div class="text-xs text-muted mt-8">Alert below: <%= product.lowStockThreshold %></div>
+        <div class="text-xs text-muted mt-8">Alert below: <%= formatQty(product.lowStockThreshold, product.unit) %></div>
       </div>
     </div>
 
@@ -123,8 +127,11 @@
       <div class="card-header"><span class="card-title">Add Stock</span></div>
       <form action="/admin/products/<%= product._id %>/restock" method="POST" data-once>
         <div class="form-group">
-          <label class="form-label">Quantity to Add</label>
-          <input type="number" name="quantity" class="form-control" min="1" placeholder="e.g. 50" required autofocus />
+          <label class="form-label">Quantity to Add (<%= getUnitMeta(product.unit).short %>)</label>
+          <input type="number" name="quantity" class="form-control"
+                 min="<%= getUnitMeta(product.unit).decimal ? '0.001' : '1' %>"
+                 step="<%= getUnitMeta(product.unit).decimal ? '0.001' : '1' %>"
+                 placeholder="e.g. 50" required autofocus />
         </div>
         <div class="form-group">
           <label class="form-label">Reason</label>

@@ -186,6 +186,24 @@
 }
 .qty-input:focus { border-color: var(--accent); }
 
+.weight-qty .qty-input { width: 56px; }
+.qty-unit-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  padding: 3px 2px;
+  outline: none;
+  cursor: pointer;
+}
+.qty-unit-select:focus { border-color: var(--accent); }
+.qty-unit-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
 .cart-discount-input {
   width: 70px;
   text-align: right;

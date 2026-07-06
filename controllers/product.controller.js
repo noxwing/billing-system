@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const StockLog = require('../models/StockLog');
 const { PAGINATION, STOCK_LOG_TYPES } = require('../config/constants');
+const { PRODUCT_UNITS } = require('../utils/units');
 
 // GET /admin/products
 async function listProducts(req, res, next) {
@@ -59,7 +60,8 @@ async function showCreateForm(req, res, next) {
       product: oldInput,
       categories,
       errors,
-      isEdit: false
+      isEdit: false,
+      unitOptions: PRODUCT_UNITS
     });
   } catch (err) { next(err); }
 }
@@ -67,7 +69,7 @@ async function showCreateForm(req, res, next) {
 // POST /admin/products
 async function createProduct(req, res, next) {
   try {
-    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent,
+    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent, unit,
       stock, unlimitedStock, lowStockThreshold, status, description } = req.body;
 
     const product = await Product.create({
@@ -78,9 +80,10 @@ async function createProduct(req, res, next) {
       purchasePrice: parseFloat(purchasePrice),
       sellingPrice: parseFloat(sellingPrice),
       taxPercent: parseFloat(taxPercent) || 0,
-      stock: parseInt(stock, 10) || 0,
+      unit: unit || 'pcs',
+      stock: parseFloat(stock) || 0,
       unlimitedStock: unlimitedStock === 'on' || unlimitedStock === 'true',
-      lowStockThreshold: parseInt(lowStockThreshold, 10) || 5,
+      lowStockThreshold: parseFloat(lowStockThreshold) || 5,
       status: status || 'active',
       description: description ? description.trim() : '',
       createdBy: req.user._id
@@ -132,7 +135,8 @@ async function showEditForm(req, res, next) {
       product,
       categories,
       errors,
-      isEdit: true
+      isEdit: true,
+      unitOptions: PRODUCT_UNITS
     });
   } catch (err) { next(err); }
 }
@@ -140,13 +144,13 @@ async function showEditForm(req, res, next) {
 // POST /admin/products/:id
 async function updateProduct(req, res, next) {
   try {
-    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent,
+    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent, unit,
       stock, unlimitedStock, lowStockThreshold, status, description } = req.body;
 
     const existing = await Product.findById(req.params.id);
     if (!existing) return res.redirect('/admin/products');
 
-    const newStock = parseInt(stock, 10) || 0;
+    const newStock = parseFloat(stock) || 0;
     const stockDiff = newStock - existing.stock;
 
     existing.name = name.trim();
@@ -156,9 +160,10 @@ async function updateProduct(req, res, next) {
     existing.purchasePrice = parseFloat(purchasePrice);
     existing.sellingPrice = parseFloat(sellingPrice);
     existing.taxPercent = parseFloat(taxPercent) || 0;
+    existing.unit = unit || 'pcs';
     existing.stock = newStock;
     existing.unlimitedStock = unlimitedStock === 'on' || unlimitedStock === 'true';
-    existing.lowStockThreshold = parseInt(lowStockThreshold, 10) || 5;
+    existing.lowStockThreshold = parseFloat(lowStockThreshold) || 5;
     existing.status = status || 'active';
     existing.description = description ? description.trim() : '';
     await existing.save();
@@ -191,7 +196,7 @@ async function deleteProduct(req, res, next) {
 async function restockProduct(req, res, next) {
   try {
     const { quantity, reason } = req.body;
-    const qty = parseInt(quantity, 10);
+    const qty = parseFloat(quantity);
     if (!qty || qty <= 0) return res.redirect(`/admin/products/${req.params.id}`);
 
     const product = await Product.findById(req.params.id);

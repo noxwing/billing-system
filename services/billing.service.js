@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const StockLog = require('../models/StockLog');
 const generateInvoiceNo = require('../utils/generateInvoiceNo');
 const { STOCK_LOG_TYPES, BILL_STATUS } = require('../config/constants');
+const { isDecimalUnit, roundQty } = require('../utils/units');
 
 /**
  * Validates cart items against DB, computes totals, and creates the bill atomically.
@@ -28,11 +29,17 @@ async function createBill({ cashier, customerName, customerPhone, items, payment
       const product = productMap[item.productId];
       if (!product) throw new Error(`Product not found: ${item.productId}`);
       if (product.status !== 'active') throw new Error(`Product "${product.name}" is inactive`);
-      if (!product.unlimitedStock && product.stock < item.qty) {
+
+      const unit = product.unit || 'pcs';
+      let qty = roundQty(parseFloat(item.qty), unit);
+      if (!qty || qty <= 0) throw new Error(`Invalid quantity for "${product.name}"`);
+      if (!isDecimalUnit(unit) && !Number.isInteger(qty)) {
+        throw new Error(`"${product.name}" is sold in whole ${unit}(s) only`);
+      }
+      if (!product.unlimitedStock && product.stock < qty) {
         throw new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}`);
       }
 
-      const qty = parseInt(item.qty, 10);
       const unitPrice = product.sellingPrice;
       const discount = parseFloat(item.discount) || 0;
       const taxPercent = product.taxPercent || 0;
@@ -45,6 +52,7 @@ async function createBill({ cashier, customerName, customerPhone, items, payment
         name: product.name,
         barcode: product.barcode,
         sku: product.sku,
+        unit,
         qty,
         unitPrice,
         discount,
