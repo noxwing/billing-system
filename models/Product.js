@@ -12,15 +12,16 @@ const productSchema = new mongoose.Schema(
     },
     barcode: {
       type: String,
-      required: [false, 'Barcode is required'],
       trim: true,
-      unique: true
+      // sparse allows multiple null/undefined values to bypass unique checks
+      unique: true,
+      sparse: true 
     },
     sku: {
       type: String,
-      required: [false, 'SKU is required'],
       trim: true,
       unique: true,
+      sparse: true,
       uppercase: true
     },
     category: {
@@ -81,6 +82,13 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Middleware to change empty strings to undefined so sparse indexes apply correctly
+productSchema.pre('save', function (next) {
+  if (this.barcode === '') this.barcode = undefined;
+  if (this.sku === '') this.sku = undefined;
+  next();
+});
 
 productSchema.index({ name: 'text' });
 productSchema.index({ category: 1, status: 1 });
