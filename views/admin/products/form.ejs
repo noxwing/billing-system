@@ -21,18 +21,20 @@
                value="<%= product.name || '' %>" placeholder="Product name" required autofocus />
       </div>
 
+      <% if (isEdit) { %>
       <div class="form-grid-2">
         <div class="form-group">
-          <label class="form-label">Barcode *</label>
+          <label class="form-label">Barcode (Optional)</label>
           <input type="text" name="barcode" class="form-control font-mono"
-                 value="<%= product.barcode || '' %>" placeholder="Scan or type barcode" required />
+                 value="<%= product.barcode || '' %>" placeholder="Scan or type barcode" />
         </div>
         <div class="form-group">
-          <label class="form-label">SKU *</label>
+          <label class="form-label">SKU (Optional)</label>
           <input type="text" name="sku" class="form-control font-mono"
-                 value="<%= product.sku || '' %>" placeholder="e.g. BEV-001" required />
+                 value="<%= product.sku || '' %>" placeholder="e.g. BEV-001" />
         </div>
       </div>
+      <% } %>
 
       <div class="form-grid-2">
         <div class="form-group">
@@ -124,7 +126,6 @@
 </div>
 
 <script>
-  // Unit metadata mirrored from the server (utils/units.js)
   const UNIT_META = <%- JSON.stringify(unitOptions) %>;
 
   const unitSelect = document.getElementById('unitSelect');
@@ -154,7 +155,6 @@
   unitSelect.addEventListener('change', syncUnitUI);
   syncUnitUI();
 
-  // Disable stock input when unlimited is toggled on
   const toggle = document.getElementById('unlimitedStockToggle');
   function syncStockInput() {
     stockInputEl.disabled = toggle.checked;

@@ -66,45 +66,6 @@ async function showCreateForm(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// POST /admin/products
-async function createProduct(req, res, next) {
-  try {
-    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent, unit,
-      stock, unlimitedStock, lowStockThreshold, status, description } = req.body;
-
-    const product = await Product.create({
-      name: name.trim(),
-      barcode: barcode.trim(),
-      sku: sku.trim().toUpperCase(),
-      category,
-      purchasePrice: parseFloat(purchasePrice),
-      sellingPrice: parseFloat(sellingPrice),
-      taxPercent: parseFloat(taxPercent) || 0,
-      unit: unit || 'pcs',
-      stock: parseFloat(stock) || 0,
-      unlimitedStock: unlimitedStock === 'on' || unlimitedStock === 'true',
-      lowStockThreshold: parseFloat(lowStockThreshold) || 5,
-      status: status || 'active',
-      description: description ? description.trim() : '',
-      createdBy: req.user._id
-    });
-
-    if (product.stock > 0 && !product.unlimitedStock) {
-      await StockLog.create({
-        product: product._id,
-        productName: product.name,
-        type: STOCK_LOG_TYPES.RESTOCK,
-        qtyChange: product.stock,
-        stockAfter: product.stock,
-        reason: 'Initial stock',
-        performedBy: req.user._id
-      });
-    }
-
-    res.redirect('/admin/products');
-  } catch (err) { next(err); }
-}
-
 // GET /admin/products/:id
 async function showProduct(req, res, next) {
   try {
@@ -141,6 +102,46 @@ async function showEditForm(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// POST /admin/products
+async function createProduct(req, res, next) {
+  try {
+    const { name, barcode, sku, category, purchasePrice, sellingPrice, taxPercent, unit,
+      stock, unlimitedStock, lowStockThreshold, status, description } = req.body;
+
+    const product = await Product.create({
+      name: name.trim(),
+      // Handle optional barcode and sku safely
+      barcode: barcode ? barcode.trim() : '', 
+      sku: sku ? sku.trim().toUpperCase() : '',
+      category,
+      purchasePrice: parseFloat(purchasePrice),
+      sellingPrice: parseFloat(sellingPrice),
+      taxPercent: parseFloat(taxPercent) || 0,
+      unit: unit || 'pcs',
+      stock: parseFloat(stock) || 0,
+      unlimitedStock: unlimitedStock === 'on' || unlimitedStock === 'true',
+      lowStockThreshold: parseFloat(lowStockThreshold) || 5,
+      status: status || 'active',
+      description: description ? description.trim() : '',
+      createdBy: req.user._id
+    });
+
+    if (product.stock > 0 && !product.unlimitedStock) {
+      await StockLog.create({
+        product: product._id,
+        productName: product.name,
+        type: STOCK_LOG_TYPES.RESTOCK,
+        qtyChange: product.stock,
+        stockAfter: product.stock,
+        reason: 'Initial stock',
+        performedBy: req.user._id
+      });
+    }
+
+    res.redirect('/admin/products');
+  } catch (err) { next(err); }
+}
+
 // POST /admin/products/:id
 async function updateProduct(req, res, next) {
   try {
@@ -154,8 +155,9 @@ async function updateProduct(req, res, next) {
     const stockDiff = newStock - existing.stock;
 
     existing.name = name.trim();
-    existing.barcode = barcode.trim();
-    existing.sku = sku.trim().toUpperCase();
+    // Handle optional barcode and sku safely on update
+    existing.barcode = barcode ? barcode.trim() : '';
+    existing.sku = sku ? sku.trim().toUpperCase() : '';
     existing.category = category;
     existing.purchasePrice = parseFloat(purchasePrice);
     existing.sellingPrice = parseFloat(sellingPrice);

@@ -55,8 +55,15 @@
             <% if (p.description) { %><div class="text-xs text-muted" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= p.description %></div><% } %>
           </td>
           <td>
-            <div class="font-mono text-sm"><%= p.barcode %></div>
-            <div class="text-xs text-muted"><%= p.sku %></div>
+            <% if (p.barcode) { %>
+              <div class="font-mono text-sm"><%= p.barcode %></div>
+            <% } %>
+            <% if (p.sku) { %>
+              <div class="text-xs text-muted"><%= p.sku %></div>
+            <% } %>
+            <% if (!p.barcode && !p.sku) { %>
+              <div class="text-xs text-muted">—</div>
+            <% } %>
           </td>
           <td class="text-sm"><%= p.category ? p.category.name : '—' %></td>
           <td style="text-align:right">
